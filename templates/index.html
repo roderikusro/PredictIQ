@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Sistem Statistik Prediktif Berbasis Machine Learning untuk analisis dan prediksi data ekonomi Indonesia">
+    <title>PredictIQ — Sistem Statistik Prediktif</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+
+    <!-- Lucide Icons CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+    <!-- ============================================= -->
+    <!--                  SIDEBAR                      -->
+    <!-- ============================================= -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <i data-lucide="brain-circuit"></i>
+                </div>
+                <div class="logo-text">
+                    <h1>PredictIQ</h1>
+                    <span>Statistik Prediktif</span>
+                </div>
+            </div>
+        </div>
+
+        <nav class="sidebar-nav">
+            <ul>
+                <li>
+                    <a href="#" class="nav-link active" data-page="dashboard" id="nav-dashboard">
+                        <i data-lucide="layout-dashboard"></i>
+                        <span>Dashboard</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link" data-page="prediksi" id="nav-prediksi">
+                        <i data-lucide="sparkles"></i>
+                        <span>Prediksi</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link" data-page="model" id="nav-model">
+                        <i data-lucide="cpu"></i>
+                        <span>Tentang Model</span>
+                    </a>
+                </li>
+                <li>
+                    <a href="#" class="nav-link" data-page="dataset" id="nav-dataset">
+                        <i data-lucide="database"></i>
+                        <span>Dataset Viewer</span>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+
+        <div class="sidebar-footer">
+            <div class="model-status">
+                <div class="status-dot" id="model-status-dot"></div>
+                <span id="model-status-text">Memuat model...</span>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ============================================= -->
+    <!--              MOBILE HEADER                    -->
+    <!-- ============================================= -->
+    <header class="mobile-header" id="mobile-header">
+        <button class="menu-toggle" id="menu-toggle" aria-label="Toggle menu">
+            <i data-lucide="menu"></i>
+        </button>
+        <div class="mobile-logo">
+            <i data-lucide="brain-circuit"></i>
+            <span>PredictIQ</span>
+        </div>
+    </header>
+
+    <!-- Overlay untuk mobile sidebar -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- ============================================= -->
+    <!--                MAIN CONTENT                   -->
+    <!-- ============================================= -->
+    <main class="main-content" id="main-content">
+
+        <!-- ========== PAGE: DASHBOARD ========== -->
+        <section class="page active" id="page-dashboard">
+            <div class="page-header">
+                <div>
+                    <h2>Dashboard</h2>
+                    <p class="page-subtitle">Ringkasan statistik dan performa model</p>
+                </div>
+                <div class="header-actions">
+                    <span class="timestamp" id="dashboard-timestamp"></span>
+                </div>
+            </div>
+
+            <!-- Stat Cards -->
+            <div class="stats-grid">
+                <div class="stat-card" id="stat-r2">
+                    <div class="stat-icon purple">
+                        <i data-lucide="target"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">R² Score</span>
+                        <span class="stat-value" id="val-r2">—</span>
+                    </div>
+                    <div class="stat-trend up">
+                        <i data-lucide="trending-up"></i>
+                    </div>
+                </div>
+
+                <div class="stat-card" id="stat-mae">
+                    <div class="stat-icon blue">
+                        <i data-lucide="bar-chart-3"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">MAE</span>
+                        <span class="stat-value" id="val-mae">—</span>
+                    </div>
+                    <div class="stat-trend">
+                        <i data-lucide="minus"></i>
+                    </div>
+                </div>
+
+                <div class="stat-card" id="stat-mse">
+                    <div class="stat-icon teal">
+                        <i data-lucide="activity"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">MSE</span>
+                        <span class="stat-value" id="val-mse">—</span>
+                    </div>
+                    <div class="stat-trend">
+                        <i data-lucide="minus"></i>
+                    </div>
+                </div>
+
+                <div class="stat-card" id="stat-data">
+                    <div class="stat-icon orange">
+                        <i data-lucide="database"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Total Data</span>
+                        <span class="stat-value" id="val-total-data">—</span>
+                    </div>
+                    <div class="stat-trend">
+                        <span class="stat-sub" id="val-train-test">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Row -->
+            <div class="charts-grid">
+                <div class="chart-card wide">
+                    <div class="chart-header">
+                        <h3>Tren Pertumbuhan GDP (%)</h3>
+                        <div class="chart-actions">
+                            <button class="btn-icon" id="btn-refresh-trend" title="Refresh">
+                                <i data-lucide="refresh-cw"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chart-gdp-trend"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Indikator Ekonomi</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chart-indicators"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prediction History Quick View -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Riwayat Prediksi Terbaru</h3>
+                    <span class="badge" id="badge-history-count">0</span>
+                </div>
+                <div class="card-body">
+                    <div class="empty-state" id="empty-history-dashboard">
+                        <i data-lucide="inbox"></i>
+                        <p>Belum ada prediksi. Buka halaman <strong>Prediksi</strong> untuk memulai.</p>
+                    </div>
+                    <div class="table-responsive" id="history-table-dashboard" style="display:none;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>No</th>
+                                    <th>Waktu</th>
+                                    <th>Prediksi GDP (%)</th>
+                                    <th>Model</th>
+                                </tr>
+                            </thead>
+                            <tbody id="history-body-dashboard"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== PAGE: PREDIKSI ========== -->
+        <section class="page" id="page-prediksi">
+            <div class="page-header">
+                <div>
+                    <h2>Prediksi GDP Growth</h2>
+                    <p class="page-subtitle">Masukkan parameter ekonomi untuk memprediksi pertumbuhan GDP</p>
+                </div>
+            </div>
+
+            <div class="predict-layout">
+                <!-- Form Input -->
+                <div class="card predict-form-card">
+                    <div class="card-header">
+                        <h3><i data-lucide="edit-3"></i> Input Parameter</h3>
+                    </div>
+                    <div class="card-body">
+                        <form id="predict-form">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label for="input-tahun">Tahun</label>
+                                    <input type="number" id="input-tahun" name="Tahun" value="2025" min="2000" max="2050" step="1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="input-kuartal">Kuartal</label>
+                                    <select id="input-kuartal" name="Kuartal" required>
+                                        <option value="1">Q1 (Jan-Mar)</option>
+                                        <option value="2">Q2 (Apr-Jun)</option>
+                                        <option value="3">Q3 (Jul-Sep)</option>
+                                        <option value="4">Q4 (Okt-Des)</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="input-populasi">Populasi (Juta)</label>
+                                    <input type="number" id="input-populasi" name="Populasi_Juta" value="280.0" step="0.1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="input-inflasi">Inflasi (%)</label>
+                                    <input type="number" id="input-inflasi" name="Inflasi_Persen" value="3.0" step="0.01" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="input-suku-bunga">Suku Bunga (%)</label>
+                                    <input type="number" id="input-suku-bunga" name="Suku_Bunga_Persen" value="5.75" step="0.25" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="input-pengangguran">Pengangguran (%)</label>
+                                    <input type="number" id="input-pengangguran" name="Pengangguran_Persen" value="5.0" step="0.01" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="input-investasi">Investasi (Triliun IDR)</label>
+                                    <input type="number" id="input-investasi" name="Investasi_Triliun" value="275.0" step="0.1" required>
+                                </div>
+                                <div class="form-group">
+                                    <label for="input-ekspor">Ekspor (Miliar USD)</label>
+                                    <input type="number" id="input-ekspor" name="Ekspor_Miliar_USD" value="58.0" step="0.1" required>
+                                </div>
+                                <div class="form-group full-width">
+                                    <label for="input-konsumsi">Konsumsi Rumah Tangga (Triliun IDR)</label>
+                                    <input type="number" id="input-konsumsi" name="Konsumsi_RT_Triliun" value="1950.0" step="0.1" required>
+                                </div>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="submit" class="btn btn-primary btn-predict" id="btn-predict">
+                                    <i data-lucide="sparkles"></i>
+                                    <span>Prediksi Sekarang</span>
+                                </button>
+                                <button type="reset" class="btn btn-ghost" id="btn-reset-form">
+                                    <i data-lucide="rotate-ccw"></i>
+                                    <span>Reset</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Hasil Prediksi -->
+                <div class="predict-result-area">
+                    <div class="card result-card" id="result-card" style="display:none;">
+                        <div class="card-header">
+                            <h3><i data-lucide="zap"></i> Hasil Prediksi</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="result-display">
+                                <div class="result-value-wrap">
+                                    <span class="result-label">Prediksi Pertumbuhan GDP</span>
+                                    <span class="result-value" id="result-value">—</span>
+                                    <span class="result-unit">persen (%)</span>
+                                </div>
+                                <div class="result-meta">
+                                    <div class="meta-item">
+                                        <i data-lucide="cpu"></i>
+                                        <span id="result-model">Linear Regression</span>
+                                    </div>
+                                    <div class="meta-item">
+                                        <i data-lucide="clock"></i>
+                                        <span id="result-time">—</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="result-indicator" id="result-indicator">
+                                <div class="indicator-bar">
+                                    <div class="indicator-fill" id="indicator-fill"></div>
+                                    <div class="indicator-marker" id="indicator-marker"></div>
+                                </div>
+                                <div class="indicator-labels">
+                                    <span>Resesi</span>
+                                    <span>Stagnasi</span>
+                                    <span>Moderat</span>
+                                    <span>Tinggi</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Riwayat Prediksi -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3><i data-lucide="history"></i> Riwayat Prediksi</h3>
+                            <div class="card-actions">
+                                <button class="btn btn-sm btn-ghost" id="btn-export-history" title="Export CSV">
+                                    <i data-lucide="download"></i>
+                                    <span>Export</span>
+                                </button>
+                                <button class="btn btn-sm btn-ghost btn-danger" id="btn-clear-history" title="Hapus Riwayat">
+                                    <i data-lucide="trash-2"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="empty-state" id="empty-history-predict">
+                                <i data-lucide="inbox"></i>
+                                <p>Belum ada riwayat prediksi.</p>
+                            </div>
+                            <div class="table-responsive" id="history-table-predict" style="display:none;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>No</th>
+                                            <th>Waktu</th>
+                                            <th>Tahun</th>
+                                            <th>Q</th>
+                                            <th>Inflasi</th>
+                                            <th>Prediksi GDP (%)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="history-body-predict"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== PAGE: TENTANG MODEL ========== -->
+        <section class="page" id="page-model">
+            <div class="page-header">
+                <div>
+                    <h2>Tentang Model</h2>
+                    <p class="page-subtitle">Informasi detail model Machine Learning yang digunakan</p>
+                </div>
+            </div>
+
+            <!-- Model Overview Cards -->
+            <div class="model-overview-grid">
+                <div class="card model-info-card">
+                    <div class="card-body">
+                        <div class="model-info-icon blue">
+                            <i data-lucide="cpu"></i>
+                        </div>
+                        <h4>Tipe Model</h4>
+                        <p id="info-model-type">Linear Regression</p>
+                    </div>
+                </div>
+                <div class="card model-info-card">
+                    <div class="card-body">
+                        <div class="model-info-icon purple">
+                            <i data-lucide="library"></i>
+                        </div>
+                        <h4>Library</h4>
+                        <p id="info-library">scikit-learn</p>
+                    </div>
+                </div>
+                <div class="card model-info-card">
+                    <div class="card-body">
+                        <div class="model-info-icon teal">
+                            <i data-lucide="scaling"></i>
+                        </div>
+                        <h4>Scaler</h4>
+                        <p id="info-scaler">StandardScaler</p>
+                    </div>
+                </div>
+                <div class="card model-info-card">
+                    <div class="card-body">
+                        <div class="model-info-icon orange">
+                            <i data-lucide="split"></i>
+                        </div>
+                        <h4>Data Split</h4>
+                        <p id="info-split">80 / 20</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Metrics Detail -->
+            <div class="charts-grid">
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Evaluasi Performa Model</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="metrics-detail">
+                            <div class="metric-row">
+                                <div class="metric-label">
+                                    <strong>MAE</strong>
+                                    <span>Mean Absolute Error — Rata-rata kesalahan absolut prediksi</span>
+                                </div>
+                                <div class="metric-bar-wrap">
+                                    <div class="metric-bar">
+                                        <div class="metric-bar-fill mae-fill" id="bar-mae"></div>
+                                    </div>
+                                    <span class="metric-val" id="metric-mae-val">—</span>
+                                </div>
+                            </div>
+                            <div class="metric-row">
+                                <div class="metric-label">
+                                    <strong>MSE</strong>
+                                    <span>Mean Squared Error — Rata-rata kuadrat kesalahan</span>
+                                </div>
+                                <div class="metric-bar-wrap">
+                                    <div class="metric-bar">
+                                        <div class="metric-bar-fill mse-fill" id="bar-mse"></div>
+                                    </div>
+                                    <span class="metric-val" id="metric-mse-val">—</span>
+                                </div>
+                            </div>
+                            <div class="metric-row">
+                                <div class="metric-label">
+                                    <strong>R² Score</strong>
+                                    <span>Koefisien Determinasi — Seberapa baik model menjelaskan data</span>
+                                </div>
+                                <div class="metric-bar-wrap">
+                                    <div class="metric-bar">
+                                        <div class="metric-bar-fill r2-fill" id="bar-r2"></div>
+                                    </div>
+                                    <span class="metric-val" id="metric-r2-val">—</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="chart-header">
+                        <h3>Aktual vs Prediksi</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chart-actual-vs-pred"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Koefisien Model -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Koefisien Model (Bobot Fitur)</h3>
+                </div>
+                <div class="card-body">
+                    <div class="chart-body" style="max-height: 400px;">
+                        <canvas id="chart-coefficients"></canvas>
+                    </div>
+                    <div class="intercept-info" id="intercept-info">
+                        <strong>Intercept:</strong> <span id="intercept-value">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Deskripsi Model -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Penjelasan Model</h3>
+                </div>
+                <div class="card-body description-body">
+                    <div class="description-content">
+                        <h4>Apa itu Linear Regression?</h4>
+                        <p>Linear Regression adalah algoritma machine learning supervised yang memodelkan hubungan linear antara variabel independen (fitur) dan variabel dependen (target). Model ini mencari garis (atau hyperplane) terbaik yang meminimalkan jarak antara nilai aktual dan nilai prediksi.</p>
+                        
+                        <h4>Rumus Model</h4>
+                        <div class="formula">
+                            ŷ = β₀ + β₁x₁ + β₂x₂ + ... + βₙxₙ
+                        </div>
+                        <p>Di mana <strong>ŷ</strong> adalah prediksi, <strong>β₀</strong> adalah intercept, dan <strong>β₁...βₙ</strong> adalah koefisien untuk setiap fitur.</p>
+                        
+                        <h4>Metrik Evaluasi</h4>
+                        <ul>
+                            <li><strong>MAE (Mean Absolute Error)</strong>: Rata-rata dari selisih absolut antara prediksi dan aktual. Semakin kecil semakin baik.</li>
+                            <li><strong>MSE (Mean Squared Error)</strong>: Rata-rata dari kuadrat selisih antara prediksi dan aktual. Lebih sensitif terhadap outlier.</li>
+                            <li><strong>R² Score</strong>: Proporsi variansi data yang bisa dijelaskan oleh model. Nilai 1.0 = sempurna, nilai 0 = tidak lebih baik dari rata-rata.</li>
+                        </ul>
+
+                        <h4>Fitur yang Digunakan</h4>
+                        <p>Model ini menggunakan 9 variabel ekonomi makro Indonesia sebagai fitur input untuk memprediksi pertumbuhan GDP per kuartal.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== PAGE: DATASET VIEWER ========== -->
+        <section class="page" id="page-dataset">
+            <div class="page-header">
+                <div>
+                    <h2>Dataset Viewer</h2>
+                    <p class="page-subtitle">Lihat dan kelola dataset yang digunakan untuk training model</p>
+                </div>
+                <div class="header-actions">
+                    <label class="btn btn-primary btn-upload" for="file-upload-input">
+                        <i data-lucide="upload"></i>
+                        <span>Upload CSV</span>
+                    </label>
+                    <input type="file" id="file-upload-input" accept=".csv" style="display:none;">
+                </div>
+            </div>
+
+            <!-- Upload Status -->
+            <div class="card upload-status-card" id="upload-status-card" style="display:none;">
+                <div class="card-body">
+                    <div class="upload-status" id="upload-status">
+                        <div class="upload-spinner"></div>
+                        <p>Mengunggah dan melatih ulang model...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dataset Info -->
+            <div class="stats-grid small-grid">
+                <div class="stat-card mini">
+                    <div class="stat-icon blue">
+                        <i data-lucide="rows-3"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Baris</span>
+                        <span class="stat-value" id="ds-rows">—</span>
+                    </div>
+                </div>
+                <div class="stat-card mini">
+                    <div class="stat-icon purple">
+                        <i data-lucide="columns-3"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Kolom</span>
+                        <span class="stat-value" id="ds-cols">—</span>
+                    </div>
+                </div>
+                <div class="stat-card mini">
+                    <div class="stat-icon teal">
+                        <i data-lucide="crosshair"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Target</span>
+                        <span class="stat-value small-text" id="ds-target">—</span>
+                    </div>
+                </div>
+                <div class="stat-card mini">
+                    <div class="stat-icon orange">
+                        <i data-lucide="layers"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Fitur</span>
+                        <span class="stat-value" id="ds-features">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Data Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Preview Data</h3>
+                    <div class="card-actions">
+                        <input type="text" class="search-input" id="dataset-search" placeholder="Cari data...">
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="data-table" id="dataset-table">
+                            <thead id="dataset-thead"></thead>
+                            <tbody id="dataset-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistik Deskriptif -->
+            <div class="card">
+                <div class="card-header">
+                    <h3>Statistik Deskriptif</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="data-table" id="stats-table">
+                            <thead id="stats-thead"></thead>
+                            <tbody id="stats-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ============================================= -->
+    <!--              TOAST NOTIFICATION               -->
+    <!-- ============================================= -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- ============================================= -->
+    <!--              LOADING OVERLAY                  -->
+    <!-- ============================================= -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner">
+            <div class="spinner"></div>
+            <p>Memproses...</p>
+        </div>
+    </div>
+
+    <!-- Custom JavaScript -->
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
