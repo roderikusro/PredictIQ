@@ -18,4 +18,5 @@ if backend_path not in sys.path:
 # Set working directory
 os.chdir(backend_path)
 
+# pyrefly: ignore [missing-import]
 from app import app as application
