@@ -1,6 +1,6 @@
 /**
  * =============================================================
- *  PredictIQ - Main Application JavaScript
+ *  Projek Akhir BPS - Main Application JavaScript
  *  Sistem Statistik Prediktif Berbasis Machine Learning
  * =============================================================
  */

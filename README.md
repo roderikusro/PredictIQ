@@ -1,4 +1,4 @@
-# 🧠 PredictIQ — Sistem Statistik Prediktif
+# 🧠 Projek Akhir BPS — Sistem Statistik Prediktif
 
 Sistem Statistik Prediktif Berbasis Machine Learning untuk analisis dan prediksi data ekonomi Indonesia.
 

@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ============================================
-echo   PredictIQ - Push Update ke GitHub
+echo   Projek Akhir BPS - Push Update ke GitHub
 echo ============================================
 echo.
 
