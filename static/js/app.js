@@ -420,6 +420,21 @@ async function loadModelInfo() {
     // Actual vs Predicted chart
     renderActualVsPredChart(data.actual_vs_predicted);
 
+    // Toggle description content and chart title
+    const descLr = document.getElementById('desc-lr');
+    const descRf = document.getElementById('desc-rf');
+    const chartTitle = document.getElementById('coef-chart-title');
+
+    if (modelType === 'random_forest') {
+      if (descLr) descLr.style.display = 'none';
+      if (descRf) descRf.style.display = 'block';
+      if (chartTitle) chartTitle.textContent = 'Feature Importance (Tingkat Kepentingan)';
+    } else {
+      if (descLr) descLr.style.display = 'block';
+      if (descRf) descRf.style.display = 'none';
+      if (chartTitle) chartTitle.textContent = 'Koefisien Model (Bobot Fitur)';
+    }
+
     // Coefficients / Feature Importance chart
     if (data.coefficients) {
       renderCoefficientsChart(data.coefficients);
@@ -785,7 +800,7 @@ function renderFeatureImportanceChart(importance) {
         label: 'Importance',
         data: values,
         backgroundColor: values.map((_, i) => {
-          const colors = ['#14b8a6','#06b6d4','#3b82f6','#6366f1','#8b5cf6','#a855f7','#d946ef','#f59e0b','#ef4444'];
+          const colors = ['#14b8a6', '#06b6d4', '#3b82f6', '#6366f1', '#8b5cf6', '#a855f7', '#d946ef', '#f59e0b', '#ef4444'];
           return colors[i % colors.length];
         }),
         borderRadius: 6

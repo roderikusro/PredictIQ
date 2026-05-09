@@ -589,7 +589,18 @@
 
                         <h4>Fitur yang Digunakan</h4>
                         <p>Kedua model menggunakan <strong>9 variabel ekonomi makro Indonesia</strong> sebagai fitur input: Tahun, Kuartal, Populasi, Inflasi, Suku Bunga, Pengangguran, Investasi, Ekspor, dan Konsumsi Rumah Tangga.</p>
+
+                        <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.1); margin: 24px 0;">
+
+                        <h4>Mekanisme Comparison Model (Perbandingan Model)</h4>
+                        <p>Fitur <strong>Perbandingan Model</strong> di aplikasi ini dirancang untuk mengevaluasi dan membandingkan performa dari Linear Regression dan Random Forest secara berdampingan. Hal ini dilakukan karena tidak ada algoritma machine learning tunggal yang cocok untuk semua jenis data (<em>No Free Lunch Theorem</em>).</p>
+                        <ul>
+                            <li><strong>Testing Simultan:</strong> Saat dataset diperbarui, sistem akan melatih ulang (<em>retrain</em>) kedua model secara bersamaan menggunakan dataset yang sama (dengan <em>train-test split</em> 80:20).</li>
+                            <li><strong>Penentuan Best Model:</strong> Sistem secara otomatis mengevaluasi metrik MAE, RMSE, dan R² Score dari kedua model pada set pengujian. Model dengan nilai <strong>R² Score tertinggi</strong> dinobatkan sebagai "Best Model".</li>
+                            <li><strong>Dual Prediction:</strong> Pada halaman prediksi perbandingan, input pengguna akan dimasukkan ke dalam kedua model. Hasil dari "Best Model" akan disorot sebagai rekomendasi utama, memberikan perspektif hasil dari dua pendekatan yang berbeda (linear vs non-linear).</li>
+                        </ul>
                     </div>
+
                 </div>
             </div>
         </section>
