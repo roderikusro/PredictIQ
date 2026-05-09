@@ -4,16 +4,18 @@
   API Server untuk Machine Learning & Data Management
 =============================================================
   Endpoint API:
-  - GET  /                    → Halaman utama (SPA)
-  - GET  /api/dashboard       → Data dashboard
-  - GET  /api/dataset         → Data dataset
-  - GET  /api/model-info      → Informasi model ML
-  - GET  /api/trend           → Data tren untuk grafik
-  - GET  /api/history         → Riwayat prediksi
-  - POST /api/predict         → Melakukan prediksi
-  - POST /api/upload-csv      → Upload dataset CSV baru
-  - GET  /api/export          → Export riwayat prediksi
-  - POST /api/clear-history   → Hapus riwayat prediksi
+  - GET  /                        -> Halaman utama (SPA)
+  - GET  /api/dashboard           -> Data dashboard
+  - GET  /api/dataset             -> Data dataset
+  - GET  /api/model-info          -> Informasi model ML
+  - GET  /api/trend               -> Data tren untuk grafik
+  - GET  /api/history             -> Riwayat prediksi
+  - POST /api/predict             -> Melakukan prediksi (LR)
+  - POST /api/predict-compare     -> Prediksi perbandingan
+  - GET  /api/model-comparison    -> Data perbandingan model
+  - POST /api/upload-csv          -> Upload dataset CSV baru
+  - GET  /api/export              -> Export riwayat prediksi
+  - POST /api/clear-history       -> Hapus riwayat prediksi
 =============================================================
 """
 
@@ -54,10 +56,12 @@ print("=" * 60)
 model = PredictiveModel(dataset_path=DEFAULT_DATASET)
 print(f"  Model Status: {'Aktif [OK]' if model.is_trained else 'Belum Dilatih [X]'}")
 if model.is_trained:
-    metrics = model.get_metrics()
-    print(f"  MAE: {metrics['mae']}")
-    print(f"  MSE: {metrics['mse']}")
-    print(f"  R² Score: {metrics['r2_score']}")
+    lr_m = model.lr_metrics
+    rf_m = model.rf_metrics
+    print(f"  --- Linear Regression ---")
+    print(f"  MAE: {lr_m['mae']}  |  RMSE: {lr_m['rmse']}  |  R2: {lr_m['r2_score']}")
+    print(f"  --- Random Forest ---")
+    print(f"  MAE: {rf_m['mae']}  |  RMSE: {rf_m['rmse']}  |  R2: {rf_m['r2_score']}")
 print("=" * 60)
 
 
@@ -123,12 +127,30 @@ def api_dataset():
 def api_model_info():
     """
     Mengembalikan informasi detail tentang model ML.
-    Termasuk koefisien, metrik, dan konfigurasi.
+    Query param: ?type=linear_regression atau ?type=random_forest
     """
     try:
-        model_info = model.get_model_info()
+        model_type = request.args.get('type', 'linear_regression')
+        model_info = model.get_model_info(model_type=model_type)
         if model_info:
             return jsonify({'status': 'success', 'data': model_info})
+        else:
+            return jsonify({'status': 'error', 'message': 'Model belum dilatih'}), 404
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/model-comparison', methods=['GET'])
+def api_model_comparison():
+    """
+    Mengembalikan data perbandingan performa kedua model.
+    Termasuk metrik, actual vs predicted, feature importance, dan insight.
+    """
+    try:
+        comparison = model.get_comparison_metrics()
+        if comparison:
+            return jsonify({'status': 'success', 'data': comparison})
         else:
             return jsonify({'status': 'error', 'message': 'Model belum dilatih'}), 404
 
@@ -156,25 +178,16 @@ def api_trend():
 def api_predict():
     """
     Melakukan prediksi berdasarkan input pengguna.
-    
-    Request Body (JSON):
-    {
-        "Tahun": 2025,
-        "Kuartal": 1,
-        "Populasi_Juta": 280,
-        "Inflasi_Persen": 3.0,
-        "Suku_Bunga_Persen": 5.5,
-        "Pengangguran_Persen": 5.0,
-        "Investasi_Triliun": 275,
-        "Ekspor_Miliar_USD": 58,
-        "Konsumsi_RT_Triliun": 1950
-    }
+    Mendukung pemilihan model via field 'model_type'.
     """
     try:
         input_data = request.get_json()
 
         if not input_data:
             return jsonify({'status': 'error', 'message': 'Data input kosong'}), 400
+
+        # Ambil model_type lalu hapus dari input agar tidak masuk ke fitur
+        model_type = input_data.pop('model_type', 'linear_regression')
 
         # Validasi semua fitur ada
         missing = [f for f in model.feature_names if f not in input_data]
@@ -185,8 +198,35 @@ def api_predict():
                 'required_features': model.feature_names
             }), 400
 
-        # Lakukan prediksi
-        result = model.predict(input_data)
+        # Lakukan prediksi dengan model yang dipilih
+        result = model.predict(input_data, model_type=model_type)
+        return jsonify({'status': 'success', 'data': result})
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/predict-compare', methods=['POST'])
+def api_predict_compare():
+    """
+    Melakukan prediksi menggunakan KEDUA model sekaligus.
+    Mengembalikan hasil perbandingan dan insight otomatis.
+    """
+    try:
+        input_data = request.get_json()
+
+        if not input_data:
+            return jsonify({'status': 'error', 'message': 'Data input kosong'}), 400
+
+        missing = [f for f in model.feature_names if f not in input_data]
+        if missing:
+            return jsonify({
+                'status': 'error',
+                'message': f'Fitur yang kurang: {", ".join(missing)}',
+                'required_features': model.feature_names
+            }), 400
+
+        result = model.predict_comparison(input_data)
         return jsonify({'status': 'success', 'data': result})
 
     except Exception as e:

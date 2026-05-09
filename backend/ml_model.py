@@ -1,13 +1,14 @@
 """
 =============================================================
   Module Machine Learning - Sistem Statistik Prediktif
-  Menggunakan Linear Regression dari scikit-learn
+  Menggunakan Linear Regression & Random Forest dari scikit-learn
 =============================================================
   Modul ini menangani:
   - Memuat dan memproses dataset CSV
-  - Melatih model Linear Regression
-  - Melakukan prediksi GDP Growth
-  - Mengevaluasi performa model (MAE, MSE, R²)
+  - Melatih model Linear Regression & Random Forest
+  - Melakukan prediksi GDP Growth (single & comparison)
+  - Mengevaluasi performa model (MAE, RMSE, R²)
+  - Membandingkan performa antar model
 =============================================================
 """
 
@@ -15,9 +16,10 @@ import pandas as pd
 import numpy as np
 import os
 import json
-import joblib
+import math
 from datetime import datetime
 from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
@@ -26,7 +28,7 @@ from sklearn.preprocessing import StandardScaler
 class PredictiveModel:
     """
     Kelas utama untuk model prediktif GDP Growth.
-    Menggunakan Linear Regression dengan fitur ekonomi makro.
+    Mendukung Linear Regression dan Random Forest Regression.
     """
 
     def __init__(self, dataset_path=None):
@@ -36,10 +38,20 @@ class PredictiveModel:
         Args:
             dataset_path (str): Path ke file CSV dataset
         """
-        self.model = None
-        self.scaler = StandardScaler()
+        # Linear Regression
+        self.lr_model = None
+        self.lr_scaler = StandardScaler()
+        self.lr_metrics = {}
+        self.lr_pred_test = None
+
+        # Random Forest
+        self.rf_model = None
+        self.rf_scaler = StandardScaler()
+        self.rf_metrics = {}
+        self.rf_pred_test = None
+
+        # Shared state
         self.is_trained = False
-        self.metrics = {}
         self.feature_names = []
         self.prediction_history = []
         self.dataset_path = dataset_path
@@ -48,7 +60,6 @@ class PredictiveModel:
         self.X_test = None
         self.y_train = None
         self.y_test = None
-        self.y_pred_test = None
 
         # Muat dan latih model jika dataset tersedia
         if dataset_path and os.path.exists(dataset_path):
@@ -56,13 +67,13 @@ class PredictiveModel:
 
     def load_and_train(self, dataset_path):
         """
-        Memuat dataset CSV dan melatih model secara otomatis.
+        Memuat dataset CSV dan melatih kedua model secara otomatis.
         
         Args:
             dataset_path (str): Path ke file CSV dataset
             
         Returns:
-            dict: Metrik evaluasi model
+            dict: Metrik evaluasi kedua model
         """
         try:
             # ---- 1. Memuat Dataset ----
@@ -71,14 +82,11 @@ class PredictiveModel:
             print(f"[INFO] Dataset dimuat: {self.df.shape[0]} baris, {self.df.shape[1]} kolom")
 
             # ---- 2. Memisahkan Fitur dan Target ----
-            # Target: GDP_Growth_Persen
-            # Fitur: semua kolom numerik kecuali target
             target_col = 'GDP_Growth_Persen'
 
             if target_col not in self.df.columns:
                 raise ValueError(f"Kolom target '{target_col}' tidak ditemukan dalam dataset")
 
-            # Pilih kolom fitur (semua kecuali target)
             self.feature_names = [col for col in self.df.columns if col != target_col]
             
             X = self.df[self.feature_names].values
@@ -89,55 +97,69 @@ class PredictiveModel:
                 X, y, test_size=0.2, random_state=42
             )
 
-            # ---- 4. Normalisasi Fitur dengan StandardScaler ----
-            self.X_train = self.scaler.fit_transform(self.X_train)
-            self.X_test = self.scaler.transform(self.X_test)
+            # ---- 4. Melatih Linear Regression ----
+            X_train_lr = self.lr_scaler.fit_transform(self.X_train)
+            X_test_lr = self.lr_scaler.transform(self.X_test)
 
-            # ---- 5. Melatih Model Linear Regression ----
-            self.model = LinearRegression()
-            self.model.fit(self.X_train, self.y_train)
+            self.lr_model = LinearRegression()
+            self.lr_model.fit(X_train_lr, self.y_train)
+            self.lr_pred_test = self.lr_model.predict(X_test_lr)
+            self.lr_metrics = self._calc_metrics(self.y_test, self.lr_pred_test)
+            print("[INFO] Linear Regression berhasil dilatih!")
+
+            # ---- 5. Melatih Random Forest ----
+            X_train_rf = self.rf_scaler.fit_transform(self.X_train)
+            X_test_rf = self.rf_scaler.transform(self.X_test)
+
+            self.rf_model = RandomForestRegressor(
+                n_estimators=100,
+                max_depth=8,
+                min_samples_split=3,
+                min_samples_leaf=2,
+                random_state=42,
+                n_jobs=-1
+            )
+            self.rf_model.fit(X_train_rf, self.y_train)
+            self.rf_pred_test = self.rf_model.predict(X_test_rf)
+            self.rf_metrics = self._calc_metrics(self.y_test, self.rf_pred_test)
+            print("[INFO] Random Forest berhasil dilatih!")
+
             self.is_trained = True
-            print("[INFO] Model berhasil dilatih!")
 
-            # ---- 6. Evaluasi Model ----
-            self.y_pred_test = self.model.predict(self.X_test)
-            self._calculate_metrics()
-
-            return self.metrics
+            return {
+                'linear_regression': self.lr_metrics,
+                'random_forest': self.rf_metrics
+            }
 
         except Exception as e:
             print(f"[ERROR] Gagal melatih model: {str(e)}")
             raise e
 
-    def _calculate_metrics(self):
+    def _calc_metrics(self, y_true, y_pred):
         """
         Menghitung metrik evaluasi model:
         - MAE (Mean Absolute Error)
-        - MSE (Mean Squared Error)
+        - RMSE (Root Mean Squared Error)
         - R² Score (Koefisien Determinasi)
         """
-        if self.y_test is not None and self.y_pred_test is not None:
-            self.metrics = {
-                'mae': round(mean_absolute_error(self.y_test, self.y_pred_test), 4),
-                'mse': round(mean_squared_error(self.y_test, self.y_pred_test), 4),
-                'r2_score': round(r2_score(self.y_test, self.y_pred_test), 4),
-                'train_size': len(self.y_train),
-                'test_size': len(self.y_test),
-                'total_data': len(self.y_train) + len(self.y_test)
-            }
+        mse = mean_squared_error(y_true, y_pred)
+        return {
+            'mae': round(mean_absolute_error(y_true, y_pred), 4),
+            'mse': round(mse, 4),
+            'rmse': round(math.sqrt(mse), 4),
+            'r2_score': round(r2_score(y_true, y_pred), 4),
+            'train_size': len(self.y_train),
+            'test_size': len(self.y_test),
+            'total_data': len(self.y_train) + len(self.y_test)
+        }
 
-    def predict(self, input_data):
+    def predict(self, input_data, model_type='linear_regression'):
         """
-        Melakukan prediksi GDP Growth berdasarkan input pengguna.
+        Melakukan prediksi GDP Growth menggunakan model yang dipilih.
         
         Args:
             input_data (dict): Dictionary berisi nilai fitur
-                Contoh: {
-                    'Tahun': 2025,
-                    'Kuartal': 1,
-                    'Populasi_Juta': 280,
-                    ...
-                }
+            model_type (str): 'linear_regression' atau 'random_forest'
                 
         Returns:
             dict: Hasil prediksi beserta detail
@@ -146,7 +168,6 @@ class PredictiveModel:
             raise Exception("Model belum dilatih. Silakan muat dataset terlebih dahulu.")
 
         try:
-            # Susun input sesuai urutan fitur
             input_values = []
             for feature in self.feature_names:
                 if feature in input_data:
@@ -154,29 +175,207 @@ class PredictiveModel:
                 else:
                     raise ValueError(f"Fitur '{feature}' tidak ditemukan dalam input")
 
-            # Transformasi input dan prediksi
             input_array = np.array(input_values).reshape(1, -1)
-            input_scaled = self.scaler.transform(input_array)
-            prediction = self.model.predict(input_scaled)[0]
 
-            # Simpan ke riwayat
+            if model_type == 'random_forest':
+                input_scaled = self.rf_scaler.transform(input_array)
+                prediction = self.rf_model.predict(input_scaled)[0]
+                model_name = 'Random Forest'
+            else:
+                input_scaled = self.lr_scaler.transform(input_array)
+                prediction = self.lr_model.predict(input_scaled)[0]
+                model_name = 'Linear Regression'
+
             result = {
                 'input': input_data,
                 'prediction': round(float(prediction), 4),
                 'unit': '% (Pertumbuhan GDP)',
                 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'model': 'Linear Regression'
+                'model': model_name,
+                'model_type': model_type
             }
             self.prediction_history.append(result)
-
             return result
 
         except Exception as e:
             raise Exception(f"Gagal melakukan prediksi: {str(e)}")
 
+    def predict_comparison(self, input_data):
+        """
+        Melakukan prediksi GDP Growth menggunakan KEDUA model.
+        Mengembalikan perbandingan hasil dan insight otomatis.
+        
+        Args:
+            input_data (dict): Dictionary berisi nilai fitur
+                
+        Returns:
+            dict: Hasil prediksi kedua model beserta insight
+        """
+        if not self.is_trained:
+            raise Exception("Model belum dilatih.")
+
+        try:
+            input_values = []
+            for feature in self.feature_names:
+                if feature in input_data:
+                    input_values.append(float(input_data[feature]))
+                else:
+                    raise ValueError(f"Fitur '{feature}' tidak ditemukan dalam input")
+
+            input_array = np.array(input_values).reshape(1, -1)
+
+            # Linear Regression prediction
+            lr_scaled = self.lr_scaler.transform(input_array)
+            lr_pred = float(self.lr_model.predict(lr_scaled)[0])
+
+            # Random Forest prediction
+            rf_scaled = self.rf_scaler.transform(input_array)
+            rf_pred = float(self.rf_model.predict(rf_scaled)[0])
+
+            # Determine best model based on R2 score
+            lr_r2 = self.lr_metrics.get('r2_score', 0)
+            rf_r2 = self.rf_metrics.get('r2_score', 0)
+            lr_mae = self.lr_metrics.get('mae', 999)
+            rf_mae = self.rf_metrics.get('mae', 999)
+
+            if rf_r2 > lr_r2:
+                best_model = 'Random Forest'
+                best_pred = rf_pred
+            else:
+                best_model = 'Linear Regression'
+                best_pred = lr_pred
+
+            # Generate insight
+            diff = abs(lr_pred - rf_pred)
+            insight = self._generate_insight(lr_pred, rf_pred, best_model, diff, lr_r2, rf_r2, lr_mae, rf_mae)
+
+            timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+            # Store in history (best model prediction)
+            result_record = {
+                'input': input_data,
+                'prediction': round(best_pred, 4),
+                'unit': '% (Pertumbuhan GDP)',
+                'timestamp': timestamp,
+                'model': f'{best_model} (Best)'
+            }
+            self.prediction_history.append(result_record)
+
+            return {
+                'linear_regression': {
+                    'prediction': round(lr_pred, 4),
+                    'metrics': self.lr_metrics
+                },
+                'random_forest': {
+                    'prediction': round(rf_pred, 4),
+                    'metrics': self.rf_metrics
+                },
+                'best_model': best_model,
+                'best_prediction': round(best_pred, 4),
+                'difference': round(diff, 4),
+                'insight': insight,
+                'timestamp': timestamp,
+                'input': input_data
+            }
+
+        except Exception as e:
+            raise Exception(f"Gagal melakukan prediksi perbandingan: {str(e)}")
+
+    def _generate_insight(self, lr_pred, rf_pred, best_model, diff, lr_r2, rf_r2, lr_mae, rf_mae):
+        """Generate insight otomatis tentang perbandingan model."""
+        insights = []
+
+        # Insight tentang best model
+        if best_model == 'Random Forest':
+            insights.append(f"Random Forest menunjukkan performa lebih baik dengan R2 Score {rf_r2} vs {lr_r2} (Linear Regression).")
+        else:
+            insights.append(f"Linear Regression menunjukkan performa lebih baik dengan R2 Score {lr_r2} vs {rf_r2} (Random Forest).")
+
+        # Insight tentang perbedaan prediksi
+        if diff < 0.5:
+            insights.append(f"Kedua model menghasilkan prediksi yang sangat mirip (selisih {round(diff, 2)}%), menunjukkan konsistensi yang baik.")
+        elif diff < 1.5:
+            insights.append(f"Terdapat perbedaan moderat ({round(diff, 2)}%) antara kedua model. Pertimbangkan menggunakan prediksi dari model terbaik.")
+        else:
+            insights.append(f"Perbedaan prediksi cukup signifikan ({round(diff, 2)}%). Disarankan menggunakan model dengan R2 Score tertinggi.")
+
+        # Insight tentang MAE
+        if rf_mae < lr_mae:
+            insights.append(f"Random Forest memiliki error lebih rendah (MAE: {rf_mae}) dibanding Linear Regression (MAE: {lr_mae}).")
+        else:
+            insights.append(f"Linear Regression memiliki error lebih rendah (MAE: {lr_mae}) dibanding Random Forest (MAE: {rf_mae}).")
+
+        # Insight tentang prediksi GDP
+        avg_pred = (lr_pred + rf_pred) / 2
+        if avg_pred > 5:
+            insights.append("Prediksi menunjukkan pertumbuhan ekonomi yang kuat (>5%).")
+        elif avg_pred > 3:
+            insights.append("Prediksi menunjukkan pertumbuhan ekonomi moderat (3-5%).")
+        elif avg_pred > 0:
+            insights.append("Prediksi menunjukkan pertumbuhan ekonomi lambat (<3%).")
+        else:
+            insights.append("Prediksi menunjukkan potensi kontraksi ekonomi (pertumbuhan negatif).")
+
+        return insights
+
     def get_metrics(self):
-        """Mengembalikan metrik evaluasi model."""
-        return self.metrics
+        """Mengembalikan metrik evaluasi model Linear Regression (default)."""
+        return self.lr_metrics
+
+    def get_comparison_metrics(self):
+        """Mengembalikan metrik perbandingan kedua model."""
+        if not self.is_trained:
+            return None
+
+        lr_r2 = self.lr_metrics.get('r2_score', 0)
+        rf_r2 = self.rf_metrics.get('r2_score', 0)
+        lr_mae = self.lr_metrics.get('mae', 999)
+        rf_mae = self.rf_metrics.get('mae', 999)
+
+        best_model = 'Random Forest' if rf_r2 > lr_r2 else 'Linear Regression'
+
+        return {
+            'linear_regression': {
+                'name': 'Linear Regression',
+                'type': 'linear',
+                'description': 'Model regresi linear yang mencari hubungan linear antara fitur dan target.',
+                'metrics': self.lr_metrics,
+                'actual_vs_predicted': {
+                    'actual': [round(float(v), 4) for v in self.y_test],
+                    'predicted': [round(float(v), 4) for v in self.lr_pred_test]
+                }
+            },
+            'random_forest': {
+                'name': 'Random Forest',
+                'type': 'ensemble',
+                'description': 'Model ensemble yang menggunakan banyak decision tree untuk prediksi yang lebih robust.',
+                'metrics': self.rf_metrics,
+                'actual_vs_predicted': {
+                    'actual': [round(float(v), 4) for v in self.y_test],
+                    'predicted': [round(float(v), 4) for v in self.rf_pred_test]
+                },
+                'feature_importance': {
+                    name: round(float(imp), 6)
+                    for name, imp in zip(self.feature_names, self.rf_model.feature_importances_)
+                }
+            },
+            'best_model': best_model,
+            'summary': self._generate_comparison_summary(best_model)
+        }
+
+    def _generate_comparison_summary(self, best_model):
+        """Generate ringkasan perbandingan model."""
+        lr = self.lr_metrics
+        rf = self.rf_metrics
+        return {
+            'best_model': best_model,
+            'r2_winner': 'Random Forest' if rf['r2_score'] > lr['r2_score'] else 'Linear Regression',
+            'mae_winner': 'Random Forest' if rf['mae'] < lr['mae'] else 'Linear Regression',
+            'rmse_winner': 'Random Forest' if rf['rmse'] < lr['rmse'] else 'Linear Regression',
+            'r2_diff': round(abs(rf['r2_score'] - lr['r2_score']), 4),
+            'mae_diff': round(abs(rf['mae'] - lr['mae']), 4),
+            'rmse_diff': round(abs(rf['rmse'] - lr['rmse']), 4),
+        }
 
     def get_history(self):
         """Mengembalikan riwayat prediksi."""
@@ -185,9 +384,6 @@ class PredictiveModel:
     def get_dataset_info(self):
         """
         Mengembalikan informasi dataset untuk ditampilkan di frontend.
-        
-        Returns:
-            dict: Info dataset termasuk preview data
         """
         if self.df is None:
             return None
@@ -202,50 +398,66 @@ class PredictiveModel:
             'target': 'GDP_Growth_Persen'
         }
 
-    def get_model_info(self):
+    def get_model_info(self, model_type='linear_regression'):
         """
-        Mengembalikan informasi detail tentang model.
-        
-        Returns:
-            dict: Detail model termasuk koefisien dan intercept
+        Mengembalikan informasi detail tentang model yang dipilih.
         """
         if not self.is_trained:
             return None
 
-        # Koefisien model (bobot setiap fitur)
-        coefficients = {}
-        for name, coef in zip(self.feature_names, self.model.coef_):
-            coefficients[name] = round(float(coef), 6)
-
-        return {
-            'model_type': 'Linear Regression',
-            'library': 'scikit-learn',
-            'features': self.feature_names,
-            'target': 'GDP_Growth_Persen',
-            'coefficients': coefficients,
-            'intercept': round(float(self.model.intercept_), 6),
-            'metrics': self.metrics,
-            'scaler': 'StandardScaler',
-            'test_split': '20%',
-            'train_split': '80%',
-            'description': 'Model Linear Regression untuk memprediksi pertumbuhan GDP berdasarkan indikator ekonomi makro Indonesia.',
-            'actual_vs_predicted': {
-                'actual': [round(float(v), 4) for v in self.y_test],
-                'predicted': [round(float(v), 4) for v in self.y_pred_test]
+        if model_type == 'random_forest':
+            feature_imp = {
+                name: round(float(imp), 6)
+                for name, imp in zip(self.feature_names, self.rf_model.feature_importances_)
             }
-        }
+            return {
+                'model_type': 'Random Forest',
+                'library': 'scikit-learn',
+                'features': self.feature_names,
+                'target': 'GDP_Growth_Persen',
+                'n_estimators': 100,
+                'max_depth': 8,
+                'feature_importance': feature_imp,
+                'metrics': self.rf_metrics,
+                'scaler': 'StandardScaler',
+                'test_split': '20%',
+                'train_split': '80%',
+                'description': 'Model Random Forest menggunakan ensemble dari 100 decision tree untuk prediksi yang lebih robust terhadap non-linearitas data.',
+                'actual_vs_predicted': {
+                    'actual': [round(float(v), 4) for v in self.y_test],
+                    'predicted': [round(float(v), 4) for v in self.rf_pred_test]
+                }
+            }
+        else:
+            coefficients = {}
+            for name, coef in zip(self.feature_names, self.lr_model.coef_):
+                coefficients[name] = round(float(coef), 6)
+
+            return {
+                'model_type': 'Linear Regression',
+                'library': 'scikit-learn',
+                'features': self.feature_names,
+                'target': 'GDP_Growth_Persen',
+                'coefficients': coefficients,
+                'intercept': round(float(self.lr_model.intercept_), 6),
+                'metrics': self.lr_metrics,
+                'scaler': 'StandardScaler',
+                'test_split': '20%',
+                'train_split': '80%',
+                'description': 'Model Linear Regression untuk memprediksi pertumbuhan GDP berdasarkan indikator ekonomi makro Indonesia.',
+                'actual_vs_predicted': {
+                    'actual': [round(float(v), 4) for v in self.y_test],
+                    'predicted': [round(float(v), 4) for v in self.lr_pred_test]
+                }
+            }
 
     def get_trend_data(self):
         """
         Mengembalikan data tren untuk grafik di dashboard.
-        
-        Returns:
-            dict: Data tren GDP dan variabel lainnya
         """
         if self.df is None:
             return None
 
-        # Label sumbu X: Tahun-Q{Kuartal}
         labels = [f"{int(row['Tahun'])}-Q{int(row['Kuartal'])}" for _, row in self.df.iterrows()]
 
         return {

@@ -10,8 +10,10 @@ const API = {
   dashboard: '/api/dashboard',
   dataset: '/api/dataset',
   modelInfo: '/api/model-info',
+  modelComparison: '/api/model-comparison',
   trend: '/api/trend',
   predict: '/api/predict',
+  predictCompare: '/api/predict-compare',
   history: '/api/history',
   upload: '/api/upload-csv',
   export: '/api/export',
@@ -23,6 +25,9 @@ let chartGDP = null;
 let chartIndicators = null;
 let chartActualVsPred = null;
 let chartCoefficients = null;
+let chartCompMetrics = null;
+let chartFeatureImp = null;
+let chartCompAVP = null;
 
 // ---- Chart.js Global Config ----
 Chart.defaults.color = '#94a3b8';
@@ -36,6 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initNavigation();
   initMobileMenu();
   initPredictForm();
+  initCompareForm();
   initUpload();
   initExport();
   initClearHistory();
@@ -83,6 +89,7 @@ function navigateTo(page) {
     case 'dashboard': loadDashboard(); break;
     case 'prediksi': loadHistory(); break;
     case 'model': loadModelInfo(); break;
+    case 'comparison': loadComparison(); break;
     case 'dataset': loadDataset(); break;
   }
 }
@@ -288,7 +295,10 @@ async function doPrediction() {
   const form = document.getElementById('predict-form');
   const formData = new FormData(form);
   const input = {};
-  formData.forEach((val, key) => { input[key] = parseFloat(val); });
+  formData.forEach((val, key) => {
+    // model_type is a string, not a number
+    input[key] = key === 'model_type' ? val : parseFloat(val);
+  });
 
   showLoading(true);
 
@@ -371,7 +381,8 @@ function renderPredictHistory(history) {
 // ===========================================================
 async function loadModelInfo() {
   try {
-    const res = await fetchAPI(API.modelInfo);
+    const modelType = document.getElementById('model-type-selector')?.value || 'linear_regression';
+    const res = await fetchAPI(API.modelInfo + '?type=' + modelType);
     if (res.status !== 'success') return;
     const data = res.data;
 
@@ -397,20 +408,33 @@ async function loadModelInfo() {
       document.getElementById('bar-r2').style.width = Math.max(0, r2 * 100) + '%';
     }, 200);
 
-    // Intercept
-    document.getElementById('intercept-value').textContent = data.intercept;
+    // Intercept (only for LR)
+    const interceptInfo = document.getElementById('intercept-info');
+    if (data.intercept !== undefined) {
+      document.getElementById('intercept-value').textContent = data.intercept;
+      interceptInfo.style.display = 'block';
+    } else {
+      interceptInfo.style.display = 'none';
+    }
 
     // Actual vs Predicted chart
     renderActualVsPredChart(data.actual_vs_predicted);
 
-    // Coefficients chart
-    renderCoefficientsChart(data.coefficients);
+    // Coefficients / Feature Importance chart
+    if (data.coefficients) {
+      renderCoefficientsChart(data.coefficients);
+    } else if (data.feature_importance) {
+      renderCoefficientsChart(data.feature_importance);
+    }
 
   } catch (err) {
     console.error('Model info error:', err);
     showToast('Gagal memuat info model', 'error');
   }
 }
+
+// Model type selector change listener
+document.getElementById('model-type-selector')?.addEventListener('change', loadModelInfo);
 
 function renderActualVsPredChart(avp) {
   const ctx = document.getElementById('chart-actual-vs-pred');
@@ -646,3 +670,209 @@ function showLoading(show) {
 
 // Refresh button
 document.getElementById('btn-refresh-trend')?.addEventListener('click', loadDashboard);
+
+// ===========================================================
+//                    PERBANDINGAN MODEL
+// ===========================================================
+async function loadComparison() {
+  try {
+    const res = await fetchAPI(API.modelComparison);
+    if (res.status !== 'success') return;
+    const d = res.data;
+
+    // Best model banner
+    document.getElementById('best-model-name').textContent = d.best_model;
+    const s = d.summary;
+    document.getElementById('best-model-reason').textContent =
+      `R2 terbaik: ${s.r2_winner} | MAE terendah: ${s.mae_winner} | RMSE terendah: ${s.rmse_winner}`;
+
+    // LR metrics
+    const lr = d.linear_regression.metrics;
+    document.getElementById('comp-lr-mae').textContent = lr.mae;
+    document.getElementById('comp-lr-rmse').textContent = lr.rmse;
+    document.getElementById('comp-lr-r2').textContent = lr.r2_score;
+
+    // RF metrics
+    const rf = d.random_forest.metrics;
+    document.getElementById('comp-rf-mae').textContent = rf.mae;
+    document.getElementById('comp-rf-rmse').textContent = rf.rmse;
+    document.getElementById('comp-rf-r2').textContent = rf.r2_score;
+
+    // Badges & winner highlight
+    const lrCard = document.getElementById('comp-card-lr');
+    const rfCard = document.getElementById('comp-card-rf');
+    lrCard.classList.remove('winner');
+    rfCard.classList.remove('winner');
+
+    if (d.best_model === 'Random Forest') {
+      rfCard.classList.add('winner');
+      document.getElementById('badge-rf').textContent = 'Best';
+      document.getElementById('badge-rf').style.background = 'rgba(245,158,11,0.2)';
+      document.getElementById('badge-rf').style.color = '#f59e0b';
+      document.getElementById('badge-lr').textContent = '';
+    } else {
+      lrCard.classList.add('winner');
+      document.getElementById('badge-lr').textContent = 'Best';
+      document.getElementById('badge-lr').style.background = 'rgba(245,158,11,0.2)';
+      document.getElementById('badge-lr').style.color = '#f59e0b';
+      document.getElementById('badge-rf').textContent = '';
+    }
+
+    // Charts
+    renderCompMetricsChart(lr, rf);
+    renderFeatureImportanceChart(d.random_forest.feature_importance);
+    renderCompAVPChart(d.linear_regression.actual_vs_predicted, d.random_forest.actual_vs_predicted);
+
+    lucide.createIcons();
+  } catch (err) {
+    console.error('Comparison error:', err);
+    showToast('Gagal memuat perbandingan model', 'error');
+  }
+}
+
+function renderCompMetricsChart(lr, rf) {
+  const ctx = document.getElementById('chart-comparison-metrics');
+  if (!ctx) return;
+  if (chartCompMetrics) chartCompMetrics.destroy();
+
+  chartCompMetrics = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['MAE', 'RMSE', 'R² Score'],
+      datasets: [
+        {
+          label: 'Linear Regression',
+          data: [lr.mae, lr.rmse, Math.max(0, lr.r2_score)],
+          backgroundColor: 'rgba(59,130,246,0.7)',
+          borderRadius: 8
+        },
+        {
+          label: 'Random Forest',
+          data: [rf.mae, rf.rmse, Math.max(0, rf.r2_score)],
+          backgroundColor: 'rgba(20,184,166,0.7)',
+          borderRadius: 8
+        }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16, font: { size: 12 } } },
+        tooltip: { backgroundColor: 'rgba(15,23,42,0.9)', cornerRadius: 8 }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+function renderFeatureImportanceChart(importance) {
+  const ctx = document.getElementById('chart-feature-importance');
+  if (!ctx) return;
+  if (chartFeatureImp) chartFeatureImp.destroy();
+
+  const sorted = Object.entries(importance).sort((a, b) => b[1] - a[1]);
+  const labels = sorted.map(e => e[0]);
+  const values = sorted.map(e => e[1]);
+
+  chartFeatureImp = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Importance',
+        data: values,
+        backgroundColor: values.map((_, i) => {
+          const colors = ['#14b8a6','#06b6d4','#3b82f6','#6366f1','#8b5cf6','#a855f7','#d946ef','#f59e0b','#ef4444'];
+          return colors[i % colors.length];
+        }),
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: 'rgba(15,23,42,0.9)', cornerRadius: 8 }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(255,255,255,0.04)' }, ticks: { font: { size: 11 } } },
+        y: { grid: { display: false }, ticks: { font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function renderCompAVPChart(lrAVP, rfAVP) {
+  const ctx = document.getElementById('chart-comparison-avp');
+  if (!ctx) return;
+  if (chartCompAVP) chartCompAVP.destroy();
+
+  const labels = lrAVP.actual.map((_, i) => `Test ${i + 1}`);
+
+  chartCompAVP = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Aktual', data: lrAVP.actual, backgroundColor: 'rgba(148,163,184,0.5)', borderRadius: 6 },
+        { label: 'LR Prediksi', data: lrAVP.predicted, backgroundColor: 'rgba(59,130,246,0.7)', borderRadius: 6 },
+        { label: 'RF Prediksi', data: rfAVP.predicted, backgroundColor: 'rgba(20,184,166,0.7)', borderRadius: 6 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16, font: { size: 12 } } },
+        tooltip: { backgroundColor: 'rgba(15,23,42,0.9)', cornerRadius: 8 }
+      },
+      scales: {
+        x: { grid: { display: false } },
+        y: { ticks: { callback: v => v + '%' }, grid: { color: 'rgba(255,255,255,0.04)' } }
+      }
+    }
+  });
+}
+
+// Compare Form
+function initCompareForm() {
+  const form = document.getElementById('compare-form');
+  form?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(form);
+    const input = {};
+    formData.forEach((val, key) => { input[key] = parseFloat(val); });
+
+    showLoading(true);
+    try {
+      const res = await fetchAPI(API.predictCompare, 'POST', input);
+      if (res.status === 'success') {
+        const d = res.data;
+        const card = document.getElementById('compare-result-card');
+        card.style.display = 'block';
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+        document.getElementById('comp-pred-lr').textContent = d.linear_regression.prediction;
+        document.getElementById('comp-pred-rf').textContent = d.random_forest.prediction;
+        document.getElementById('comp-best-text').textContent =
+          `Model Terbaik: ${d.best_model} (Prediksi: ${d.best_prediction}%)`;
+
+        // Render insights
+        const list = document.getElementById('insight-list');
+        list.innerHTML = d.insight.map(i => `<li>${i}</li>`).join('');
+
+        lucide.createIcons();
+        showToast('Perbandingan prediksi berhasil!', 'success');
+      } else {
+        showToast(res.message || 'Gagal', 'error');
+      }
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error');
+    } finally {
+      showLoading(false);
+    }
+  });
+}

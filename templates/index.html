@@ -59,6 +59,12 @@
                     </a>
                 </li>
                 <li>
+                    <a href="#" class="nav-link" data-page="comparison" id="nav-comparison">
+                        <i data-lucide="git-compare"></i>
+                        <span>Perbandingan Model</span>
+                    </a>
+                </li>
+                <li>
                     <a href="#" class="nav-link" data-page="dataset" id="nav-dataset">
                         <i data-lucide="database"></i>
                         <span>Dataset Viewer</span>
@@ -235,6 +241,13 @@
                     <div class="card-body">
                         <form id="predict-form">
                             <div class="form-grid">
+                                <div class="form-group full-width model-select-group">
+                                    <label for="input-model"><i data-lucide="cpu" style="width:14px;height:14px;display:inline;vertical-align:-2px;margin-right:4px;"></i> Pilih Model</label>
+                                    <select id="input-model" name="model_type" required>
+                                        <option value="linear_regression">Linear Regression</option>
+                                        <option value="random_forest">Random Forest</option>
+                                    </select>
+                                </div>
                                 <div class="form-group">
                                     <label for="input-tahun">Tahun</label>
                                     <input type="number" id="input-tahun" name="Tahun" value="2025" min="2000" max="2050" step="1" required>
@@ -378,6 +391,12 @@
                     <h2>Tentang Model</h2>
                     <p class="page-subtitle">Informasi detail model Machine Learning yang digunakan</p>
                 </div>
+                <div class="header-actions">
+                    <select id="model-type-selector" class="model-selector">
+                        <option value="linear_regression">Linear Regression</option>
+                        <option value="random_forest">Random Forest</option>
+                    </select>
+                </div>
             </div>
 
             <!-- Model Overview Cards -->
@@ -478,10 +497,10 @@
                 </div>
             </div>
 
-            <!-- Koefisien Model -->
+            <!-- Koefisien / Feature Importance -->
             <div class="card">
                 <div class="card-header">
-                    <h3>Koefisien Model (Bobot Fitur)</h3>
+                    <h3 id="coef-chart-title">Koefisien Model (Bobot Fitur)</h3>
                 </div>
                 <div class="card-body">
                     <div class="chart-body" style="max-height: 400px;">
@@ -499,25 +518,77 @@
                     <h3>Penjelasan Model</h3>
                 </div>
                 <div class="card-body description-body">
-                    <div class="description-content">
+                    <!-- Linear Regression Explanation -->
+                    <div class="description-content" id="desc-lr">
                         <h4>Apa itu Linear Regression?</h4>
-                        <p>Linear Regression adalah algoritma machine learning supervised yang memodelkan hubungan linear antara variabel independen (fitur) dan variabel dependen (target). Model ini mencari garis (atau hyperplane) terbaik yang meminimalkan jarak antara nilai aktual dan nilai prediksi.</p>
+                        <p>Linear Regression adalah algoritma machine learning supervised yang memodelkan hubungan <strong>linear</strong> antara variabel independen (fitur) dan variabel dependen (target). Model ini mencari garis (atau hyperplane) terbaik yang meminimalkan jarak antara nilai aktual dan nilai prediksi.</p>
                         
                         <h4>Rumus Model</h4>
                         <div class="formula">
                             ŷ = β₀ + β₁x₁ + β₂x₂ + ... + βₙxₙ
                         </div>
                         <p>Di mana <strong>ŷ</strong> adalah prediksi, <strong>β₀</strong> adalah intercept, dan <strong>β₁...βₙ</strong> adalah koefisien untuk setiap fitur.</p>
+
+                        <h4>Kelebihan</h4>
+                        <ul>
+                            <li><strong>Interpretable:</strong> Koefisien menunjukkan arah dan kekuatan pengaruh setiap fitur.</li>
+                            <li><strong>Cepat:</strong> Waktu training sangat singkat, cocok untuk dataset kecil.</li>
+                            <li><strong>Baseline:</strong> Sering digunakan sebagai model dasar untuk perbandingan.</li>
+                        </ul>
+
+                        <h4>Keterbatasan</h4>
+                        <ul>
+                            <li>Hanya menangkap hubungan linear antar variabel.</li>
+                            <li>Sensitif terhadap outlier yang dapat mempengaruhi garis regresi.</li>
+                            <li>Asumsi multikolinearitas rendah antar fitur.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Random Forest Explanation -->
+                    <div class="description-content" id="desc-rf" style="display:none;">
+                        <h4>Apa itu Random Forest?</h4>
+                        <p>Random Forest adalah algoritma <strong>ensemble learning</strong> yang menggabungkan banyak Decision Tree untuk menghasilkan prediksi yang lebih akurat dan stabil. Setiap tree dilatih dengan subset data acak (bagging), dan hasil akhirnya merupakan rata-rata dari semua tree.</p>
                         
+                        <h4>Cara Kerja</h4>
+                        <div class="formula">
+                            ŷ = (1/N) × Σ tree_i(x)   untuk i = 1...N
+                        </div>
+                        <p>Di mana <strong>N</strong> adalah jumlah tree (100 dalam model ini), dan <strong>tree_i(x)</strong> adalah prediksi dari tree ke-i.</p>
+
+                        <h4>Konfigurasi Model</h4>
+                        <ul>
+                            <li><strong>n_estimators = 100:</strong> Jumlah decision tree dalam ensemble.</li>
+                            <li><strong>max_depth = 8:</strong> Kedalaman maksimum setiap tree.</li>
+                            <li><strong>min_samples_split = 3:</strong> Minimum sampel untuk membagi node.</li>
+                            <li><strong>min_samples_leaf = 2:</strong> Minimum sampel pada setiap leaf.</li>
+                        </ul>
+
+                        <h4>Kelebihan</h4>
+                        <ul>
+                            <li><strong>Non-linear:</strong> Mampu menangkap hubungan non-linear yang kompleks.</li>
+                            <li><strong>Robust:</strong> Tidak mudah overfitting berkat mekanisme bagging.</li>
+                            <li><strong>Feature Importance:</strong> Otomatis menghitung tingkat kepentingan setiap fitur.</li>
+                        </ul>
+
+                        <h4>Keterbatasan</h4>
+                        <ul>
+                            <li>Kurang interpretable dibandingkan Linear Regression.</li>
+                            <li>Waktu training lebih lama untuk dataset besar.</li>
+                            <li>Membutuhkan tuning hyperparameter yang tepat.</li>
+                        </ul>
+                    </div>
+
+                    <!-- Shared: Metrik Evaluasi -->
+                    <div class="description-content">
                         <h4>Metrik Evaluasi</h4>
                         <ul>
-                            <li><strong>MAE (Mean Absolute Error)</strong>: Rata-rata dari selisih absolut antara prediksi dan aktual. Semakin kecil semakin baik.</li>
-                            <li><strong>MSE (Mean Squared Error)</strong>: Rata-rata dari kuadrat selisih antara prediksi dan aktual. Lebih sensitif terhadap outlier.</li>
-                            <li><strong>R² Score</strong>: Proporsi variansi data yang bisa dijelaskan oleh model. Nilai 1.0 = sempurna, nilai 0 = tidak lebih baik dari rata-rata.</li>
+                            <li><strong>MAE (Mean Absolute Error):</strong> Rata-rata selisih absolut antara prediksi dan aktual. Semakin kecil semakin baik.</li>
+                            <li><strong>RMSE (Root Mean Squared Error):</strong> Akar kuadrat dari rata-rata kuadrat kesalahan. Lebih sensitif terhadap outlier.</li>
+                            <li><strong>R² Score:</strong> Proporsi variansi data yang bisa dijelaskan oleh model. Nilai 1.0 = sempurna, nilai negatif = lebih buruk dari rata-rata.</li>
                         </ul>
 
                         <h4>Fitur yang Digunakan</h4>
-                        <p>Model ini menggunakan 9 variabel ekonomi makro Indonesia sebagai fitur input untuk memprediksi pertumbuhan GDP per kuartal.</p>
+                        <p>Kedua model menggunakan <strong>9 variabel ekonomi makro Indonesia</strong> sebagai fitur input: Tahun, Kuartal, Populasi, Inflasi, Suku Bunga, Pengangguran, Investasi, Ekspor, dan Konsumsi Rumah Tangga.</p>
                     </div>
                 </div>
             </div>
@@ -618,6 +689,210 @@
                             <thead id="stats-thead"></thead>
                             <tbody id="stats-tbody"></tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== PAGE: PERBANDINGAN MODEL ========== -->
+        <section class="page" id="page-comparison">
+            <div class="page-header">
+                <div>
+                    <h2>Perbandingan Model</h2>
+                    <p class="page-subtitle">Bandingkan performa Linear Regression vs Random Forest</p>
+                </div>
+            </div>
+
+            <!-- Best Model Banner -->
+            <div class="card best-model-banner" id="best-model-banner">
+                <div class="card-body">
+                    <div class="best-model-content">
+                        <div class="best-model-icon">
+                            <i data-lucide="trophy"></i>
+                        </div>
+                        <div class="best-model-text">
+                            <h3>Model Terbaik: <span id="best-model-name">—</span></h3>
+                            <p id="best-model-reason">Memuat data perbandingan...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Model Cards Comparison -->
+            <div class="comparison-grid">
+                <!-- Linear Regression Card -->
+                <div class="card comparison-card" id="comp-card-lr">
+                    <div class="card-header">
+                        <div class="comp-model-title">
+                            <div class="comp-icon blue"><i data-lucide="trending-up"></i></div>
+                            <h3>Linear Regression</h3>
+                        </div>
+                        <span class="badge" id="badge-lr">—</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="comp-desc">Model regresi linear yang mencari hubungan linear antara fitur dan target.</p>
+                        <div class="comp-metrics">
+                            <div class="comp-metric-item">
+                                <span class="comp-metric-label">MAE</span>
+                                <span class="comp-metric-value" id="comp-lr-mae">—</span>
+                            </div>
+                            <div class="comp-metric-item">
+                                <span class="comp-metric-label">RMSE</span>
+                                <span class="comp-metric-value" id="comp-lr-rmse">—</span>
+                            </div>
+                            <div class="comp-metric-item">
+                                <span class="comp-metric-label">R² Score</span>
+                                <span class="comp-metric-value" id="comp-lr-r2">—</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Random Forest Card -->
+                <div class="card comparison-card" id="comp-card-rf">
+                    <div class="card-header">
+                        <div class="comp-model-title">
+                            <div class="comp-icon teal"><i data-lucide="trees"></i></div>
+                            <h3>Random Forest</h3>
+                        </div>
+                        <span class="badge" id="badge-rf">—</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="comp-desc">Model ensemble yang menggunakan banyak decision tree untuk prediksi yang lebih robust.</p>
+                        <div class="comp-metrics">
+                            <div class="comp-metric-item">
+                                <span class="comp-metric-label">MAE</span>
+                                <span class="comp-metric-value" id="comp-rf-mae">—</span>
+                            </div>
+                            <div class="comp-metric-item">
+                                <span class="comp-metric-label">RMSE</span>
+                                <span class="comp-metric-value" id="comp-rf-rmse">—</span>
+                            </div>
+                            <div class="comp-metric-item">
+                                <span class="comp-metric-label">R² Score</span>
+                                <span class="comp-metric-value" id="comp-rf-r2">—</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Charts Comparison -->
+            <div class="charts-grid">
+                <div class="chart-card wide">
+                    <div class="chart-header">
+                        <h3>Perbandingan Metrik Model</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chart-comparison-metrics"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card">
+                    <div class="chart-header">
+                        <h3>Feature Importance (Random Forest)</h3>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chart-feature-importance"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actual vs Predicted Both Models -->
+            <div class="card">
+                <div class="chart-header" style="padding:20px 24px 0;">
+                    <h3>Aktual vs Prediksi — Kedua Model</h3>
+                </div>
+                <div class="chart-body" style="padding:16px 24px 24px;">
+                    <canvas id="chart-comparison-avp"></canvas>
+                </div>
+            </div>
+
+            <!-- Prediction Comparison Section -->
+            <div class="card" style="margin-top: 24px;">
+                <div class="card-header">
+                    <h3><i data-lucide="git-compare"></i> Prediksi Perbandingan</h3>
+                </div>
+                <div class="card-body">
+                    <form id="compare-form">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label for="comp-tahun">Tahun</label>
+                                <input type="number" id="comp-tahun" name="Tahun" value="2025" min="2000" max="2050" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="comp-kuartal">Kuartal</label>
+                                <select id="comp-kuartal" name="Kuartal" required>
+                                    <option value="1">Q1</option><option value="2">Q2</option>
+                                    <option value="3">Q3</option><option value="4">Q4</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="comp-populasi">Populasi (Juta)</label>
+                                <input type="number" id="comp-populasi" name="Populasi_Juta" value="280" step="0.1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="comp-inflasi">Inflasi (%)</label>
+                                <input type="number" id="comp-inflasi" name="Inflasi_Persen" value="3.0" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="comp-suku-bunga">Suku Bunga (%)</label>
+                                <input type="number" id="comp-suku-bunga" name="Suku_Bunga_Persen" value="5.75" step="0.25" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="comp-pengangguran">Pengangguran (%)</label>
+                                <input type="number" id="comp-pengangguran" name="Pengangguran_Persen" value="5.0" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="comp-investasi">Investasi (Triliun)</label>
+                                <input type="number" id="comp-investasi" name="Investasi_Triliun" value="275" step="0.1" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="comp-ekspor">Ekspor (Miliar USD)</label>
+                                <input type="number" id="comp-ekspor" name="Ekspor_Miliar_USD" value="58" step="0.1" required>
+                            </div>
+                            <div class="form-group full-width">
+                                <label for="comp-konsumsi">Konsumsi RT (Triliun)</label>
+                                <input type="number" id="comp-konsumsi" name="Konsumsi_RT_Triliun" value="1950" step="0.1" required>
+                            </div>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">
+                                <i data-lucide="git-compare"></i>
+                                <span>Bandingkan Prediksi</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Comparison Result -->
+            <div class="card" id="compare-result-card" style="display:none; margin-top:24px;">
+                <div class="card-header">
+                    <h3><i data-lucide="zap"></i> Hasil Perbandingan Prediksi</h3>
+                </div>
+                <div class="card-body">
+                    <div class="comparison-result-grid">
+                        <div class="comp-result-item lr-result">
+                            <span class="comp-result-label">Linear Regression</span>
+                            <span class="comp-result-value" id="comp-pred-lr">—</span>
+                            <span class="comp-result-unit">% GDP Growth</span>
+                        </div>
+                        <div class="comp-result-vs">VS</div>
+                        <div class="comp-result-item rf-result">
+                            <span class="comp-result-label">Random Forest</span>
+                            <span class="comp-result-value" id="comp-pred-rf">—</span>
+                            <span class="comp-result-unit">% GDP Growth</span>
+                        </div>
+                    </div>
+                    <div class="comp-best-badge" id="comp-best-badge">
+                        <i data-lucide="award"></i>
+                        <span id="comp-best-text">—</span>
+                    </div>
+                    <!-- Insight Section -->
+                    <div class="insight-section" id="insight-section">
+                        <h4><i data-lucide="lightbulb"></i> Insight Otomatis</h4>
+                        <ul id="insight-list"></ul>
                     </div>
                 </div>
             </div>

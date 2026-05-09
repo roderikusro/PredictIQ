@@ -463,4 +463,204 @@ input, select { font-family: inherit; }
 @media (max-width: 480px) {
   .stats-grid { grid-template-columns: 1fr; }
   .model-overview-grid { grid-template-columns: 1fr 1fr; }
+  .comparison-grid { grid-template-columns: 1fr; }
+  .comparison-result-grid { flex-direction: column; gap: 12px; }
+  .comp-result-vs { transform: rotate(90deg); }
 }
+/* ===========================================================
+   MODEL SELECTOR DROPDOWN
+   =========================================================== */
+.model-selector {
+  background: rgba(139,92,246,0.1);
+  border: 1px solid rgba(139,92,246,0.3);
+  color: #a78bfa;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: 'Inter', sans-serif;
+}
+.model-selector:hover {
+  background: rgba(139,92,246,0.2);
+  border-color: rgba(139,92,246,0.5);
+}
+.model-selector:focus {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(139,92,246,0.15);
+}
+.model-selector option {
+  background: #1a1f2e;
+  color: #e2e8f0;
+}
+.model-select-group {
+  background: rgba(139,92,246,0.05);
+  border: 1px solid rgba(139,92,246,0.15);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.model-select-group label {
+  color: #a78bfa !important;
+  font-weight: 600 !important;
+}
+.model-select-group select {
+  border-color: rgba(139,92,246,0.3);
+}
+
+/* ===========================================================
+   PERBANDINGAN MODEL - Page Styles
+   =========================================================== */
+
+/* Best Model Banner */
+.best-model-banner {
+  border-left: 4px solid #f59e0b;
+  background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(139,92,246,0.05));
+}
+.best-model-content {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.best-model-icon {
+  width: 56px; height: 56px;
+  background: linear-gradient(135deg, #f59e0b, #f97316);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.best-model-icon svg { width: 28px; height: 28px; color: #fff; }
+.best-model-text h3 {
+  font-size: 1.15rem; font-weight: 700; color: var(--text-primary);
+}
+.best-model-text h3 span { color: #f59e0b; }
+.best-model-text p {
+  font-size: 0.88rem; color: var(--text-secondary); margin-top: 4px;
+}
+
+/* Comparison Grid */
+.comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+/* Comparison Card */
+.comparison-card { transition: transform 0.3s, box-shadow 0.3s; }
+.comparison-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+}
+.comparison-card.winner {
+  border: 1px solid rgba(245,158,11,0.4);
+  box-shadow: 0 0 20px rgba(245,158,11,0.1);
+}
+
+.comp-model-title {
+  display: flex; align-items: center; gap: 12px;
+}
+.comp-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+}
+.comp-icon svg { width: 20px; height: 20px; color: #fff; }
+.comp-icon.blue { background: linear-gradient(135deg, #3b82f6, #6366f1); }
+.comp-icon.teal { background: linear-gradient(135deg, #14b8a6, #06b6d4); }
+
+.comp-desc {
+  font-size: 0.85rem; color: var(--text-secondary);
+  margin-bottom: 20px; line-height: 1.5;
+}
+
+.comp-metrics {
+  display: flex; flex-direction: column; gap: 12px;
+}
+.comp-metric-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.03);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+.comp-metric-label {
+  font-size: 0.82rem; color: var(--text-secondary); font-weight: 500;
+}
+.comp-metric-value {
+  font-size: 1rem; font-weight: 700; color: var(--text-primary);
+  font-family: 'Inter', monospace;
+}
+
+/* Comparison Result Grid */
+.comparison-result-grid {
+  display: flex; align-items: center; justify-content: center;
+  gap: 32px; margin-bottom: 24px; padding: 20px 0;
+}
+.comp-result-item {
+  text-align: center; padding: 24px 32px;
+  border-radius: 16px; min-width: 200px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  transition: transform 0.3s;
+}
+.comp-result-item:hover { transform: scale(1.03); }
+.lr-result { border-top: 3px solid #3b82f6; }
+.rf-result { border-top: 3px solid #14b8a6; }
+
+.comp-result-label {
+  display: block; font-size: 0.85rem; color: var(--text-secondary);
+  font-weight: 500; margin-bottom: 8px;
+}
+.comp-result-value {
+  display: block; font-size: 2.2rem; font-weight: 800;
+  color: var(--text-primary); line-height: 1;
+}
+.lr-result .comp-result-value { color: #3b82f6; }
+.rf-result .comp-result-value { color: #14b8a6; }
+.comp-result-unit {
+  display: block; font-size: 0.78rem; color: var(--text-secondary);
+  margin-top: 6px;
+}
+.comp-result-vs {
+  font-size: 1.5rem; font-weight: 800; color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+/* Best Badge */
+.comp-best-badge {
+  display: flex; align-items: center; justify-content: center;
+  gap: 10px; padding: 14px 24px;
+  background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(245,158,11,0.04));
+  border: 1px solid rgba(245,158,11,0.25);
+  border-radius: 12px; text-align: center;
+  margin-bottom: 20px;
+}
+.comp-best-badge svg { width: 20px; height: 20px; color: #f59e0b; }
+.comp-best-badge span {
+  font-weight: 600; color: #f59e0b; font-size: 0.95rem;
+}
+
+/* Insight Section */
+.insight-section {
+  background: rgba(139,92,246,0.06);
+  border: 1px solid rgba(139,92,246,0.15);
+  border-radius: 12px; padding: 20px 24px;
+}
+.insight-section h4 {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 0.95rem; font-weight: 600; color: #a78bfa;
+  margin-bottom: 14px;
+}
+.insight-section h4 svg { width: 18px; height: 18px; }
+.insight-section ul { list-style: none; padding: 0; margin: 0; }
+.insight-section li {
+  font-size: 0.88rem; color: var(--text-secondary);
+  padding: 8px 0; line-height: 1.6;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.insight-section li:last-child { border-bottom: none; }
+.insight-section li::before {
+  content: '\2022'; color: #a78bfa; font-weight: bold;
+  display: inline-block; width: 16px;
+}
+
