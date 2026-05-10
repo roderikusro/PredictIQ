@@ -138,6 +138,14 @@ async function loadDashboard() {
       document.getElementById('val-train-test').textContent =
         m.train_size && m.test_size ? `Train: ${m.train_size} | Test: ${m.test_size}` : '—';
       document.getElementById('dashboard-timestamp').textContent = dashRes.timestamp || '';
+      
+      const bestModelBadge = document.getElementById('dashboard-best-model-badge');
+      if (m.model_name) {
+          bestModelBadge.style.display = 'flex';
+          document.getElementById('dashboard-best-model').textContent = `${m.model_name}`;
+      } else {
+          bestModelBadge.style.display = 'none';
+      }
 
       // Model status
       const dot = document.getElementById('model-status-dot');

@@ -388,8 +388,21 @@ class PredictiveModel:
         return insights
 
     def get_metrics(self):
-        """Mengembalikan metrik evaluasi model Linear Regression (default)."""
-        return self.lr_metrics
+        """Mengembalikan metrik evaluasi dari model terbaik."""
+        if not self.is_trained:
+            return {}
+            
+        lr_r2 = self.lr_metrics.get('r2_score', 0)
+        rf_r2 = self.rf_metrics.get('r2_score', 0)
+        
+        if rf_r2 > lr_r2:
+            best_metrics = self.rf_metrics.copy()
+            best_metrics['model_name'] = 'Random Forest'
+        else:
+            best_metrics = self.lr_metrics.copy()
+            best_metrics['model_name'] = 'Linear Regression'
+            
+        return best_metrics
 
     def get_comparison_metrics(self):
         """Mengembalikan metrik perbandingan kedua model."""

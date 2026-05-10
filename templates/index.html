@@ -115,7 +115,11 @@
                     <h2>Dashboard</h2>
                     <p class="page-subtitle">Ringkasan statistik dan performa model</p>
                 </div>
-                <div class="header-actions">
+                <div class="header-actions" style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+                    <div id="dashboard-best-model-badge" style="background:rgba(245,158,11,0.15); color:#f59e0b; padding:4px 10px; border-radius:6px; font-size:0.85rem; font-weight:600; display:none; align-items:center; gap:6px;">
+                        <i data-lucide="award" style="width:14px; height:14px;"></i>
+                        <span id="dashboard-best-model">Menghitung...</span>
+                    </div>
                     <span class="timestamp" id="dashboard-timestamp"></span>
                 </div>
             </div>
