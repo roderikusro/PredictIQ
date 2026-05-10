@@ -1002,8 +1002,33 @@ async function loadEDA() {
     const list = document.getElementById('eda-insights-list');
     list.innerHTML = edaDataCache.insights.map(i => `<li>${i}</li>`).join('');
 
-    // 2. Heatmap
-    renderEdaHeatmap(edaDataCache.correlation, edaDataCache.columns);
+    // 2. Heatmap Selectors & Initial Render
+    const heatmapSelectors = document.getElementById('heatmap-var-selectors');
+    heatmapSelectors.innerHTML = '';
+    let selectedHeatmapCols = [...edaDataCache.columns];
+
+    edaDataCache.columns.forEach(col => {
+      const label = document.createElement('label');
+      label.className = 'chip-checkbox active';
+      label.innerHTML = `<input type="checkbox" value="${col}" checked> ${col}`;
+      
+      const checkbox = label.querySelector('input');
+      checkbox.addEventListener('change', (e) => {
+        if (e.target.checked) {
+          label.classList.add('active');
+          if (!selectedHeatmapCols.includes(col)) selectedHeatmapCols.push(col);
+        } else {
+          label.classList.remove('active');
+          selectedHeatmapCols = selectedHeatmapCols.filter(c => c !== col);
+        }
+        // Maintain original column order
+        selectedHeatmapCols.sort((a, b) => edaDataCache.columns.indexOf(a) - edaDataCache.columns.indexOf(b));
+        renderEdaHeatmap(edaDataCache.correlation, selectedHeatmapCols);
+      });
+      heatmapSelectors.appendChild(label);
+    });
+
+    renderEdaHeatmap(edaDataCache.correlation, selectedHeatmapCols);
 
     // 3. Descriptive Stats Table
     const tbody = document.querySelector('#eda-desc-table tbody');
@@ -1066,6 +1091,13 @@ async function loadEDA() {
 function renderEdaHeatmap(corr, columns) {
   const container = document.getElementById('eda-heatmap-container');
   container.innerHTML = '';
+  
+  if (!columns || columns.length === 0) {
+    container.innerHTML = '<div style="grid-column: 1 / -1; padding: 20px; text-align: center; color: var(--text-muted);">Pilih minimal 1 variabel untuk melihat korelasi.</div>';
+    container.style.gridTemplateColumns = '1fr';
+    return;
+  }
+
   const n = columns.length;
   container.style.gridTemplateColumns = `100px repeat(${n}, 1fr)`;
 

@@ -253,10 +253,13 @@
             <div class="chart-grid">
                 <!-- Correlation Heatmap -->
                 <div class="chart-card" style="grid-column: 1 / -1;">
-                    <div class="chart-header">
+                    <div class="chart-header" style="display:flex; flex-direction:column; gap:10px;">
                         <h3>Korelasi Antar Variabel (Heatmap)</h3>
+                        <div id="heatmap-var-selectors" style="display:flex; flex-wrap:wrap; gap:8px;">
+                            <!-- Checkboxes populated by JS -->
+                        </div>
                     </div>
-                    <div class="chart-body" style="overflow-x: auto;">
+                    <div class="chart-body" style="overflow-x: auto; max-height: 500px;">
                         <div id="eda-heatmap-container" class="heatmap-container"></div>
                     </div>
                 </div>
