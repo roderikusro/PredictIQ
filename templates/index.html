@@ -195,8 +195,14 @@
                     <div class="chart-header">
                         <h3>Indikator Ekonomi</h3>
                     </div>
-                    <div class="chart-body">
-                        <canvas id="chart-indicators"></canvas>
+                    <div class="chart-body" style="display: flex; flex-direction: column;">
+                        <div id="indicator-selectors" style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom: 12px; align-items:center;">
+                            <!-- Dropdowns injected via JS -->
+                            <button id="btn-add-indicator" class="btn btn-secondary" style="padding: 4px 10px; font-size:1.2rem; line-height:1; border-radius:4px; height:32px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#fff; cursor:pointer;" title="Tambah Variabel">+</button>
+                        </div>
+                        <div style="flex-grow:1; position:relative;">
+                            <canvas id="chart-indicators"></canvas>
+                        </div>
                     </div>
                 </div>
             </div>

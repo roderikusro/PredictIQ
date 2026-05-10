@@ -157,8 +157,9 @@ async function loadDashboard() {
 
     // Render GDP trend chart
     if (trendRes.status === 'success') {
+      window.globalTrendData = trendRes.data;
       renderGDPChart(trendRes.data);
-      renderIndicatorsChart(trendRes.data);
+      initIndicatorSelectors();
     }
 
     // Render history
@@ -294,27 +295,120 @@ function renderGDPChart(data) {
   });
 }
 
-function renderIndicatorsChart(data) {
+function initIndicatorSelectors() {
+  if (!window.globalTrendData || !window.globalTrendData.indicators) return;
+  const indicatorsObj = window.globalTrendData.indicators;
+  const availableFeatures = Object.keys(indicatorsObj);
+  
+  if (availableFeatures.length === 0) return;
+
+  // Initialize with the first feature if not already set
+  if (!window.selectedIndicators || window.selectedIndicators.length === 0) {
+    window.selectedIndicators = [availableFeatures[0]];
+  }
+
+  const container = document.getElementById('indicator-selectors');
+  if (!container) return;
+
+  // Remove existing dropdowns
+  const existingSelects = container.querySelectorAll('.indicator-select-wrapper');
+  existingSelects.forEach(el => el.remove());
+
+  const addBtn = document.getElementById('btn-add-indicator');
+
+  // Render current dropdowns
+  window.selectedIndicators.forEach((selectedVal, index) => {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'indicator-select-wrapper';
+    wrapper.style.display = 'flex';
+    wrapper.style.alignItems = 'center';
+    wrapper.style.gap = '4px';
+
+    const select = document.createElement('select');
+    select.className = 'form-control';
+    select.style.padding = '4px 8px';
+    select.style.height = '32px';
+    select.style.fontSize = '0.9rem';
+    select.style.width = 'auto';
+    select.style.minWidth = '120px';
+    select.style.background = 'rgba(255,255,255,0.05)';
+    select.style.border = '1px solid rgba(255,255,255,0.1)';
+    select.style.color = '#fff';
+
+    availableFeatures.forEach(f => {
+      const option = document.createElement('option');
+      option.value = f;
+      option.textContent = f;
+      if (f === selectedVal) option.selected = true;
+      select.appendChild(option);
+    });
+
+    select.addEventListener('change', (e) => {
+      window.selectedIndicators[index] = e.target.value;
+      renderIndicatorsChart();
+    });
+
+    wrapper.appendChild(select);
+
+    // Remove button if more than 1 dropdown
+    if (window.selectedIndicators.length > 1) {
+      const removeBtn = document.createElement('button');
+      removeBtn.className = 'btn-icon';
+      removeBtn.innerHTML = '&times;';
+      removeBtn.style.color = '#ef4444';
+      removeBtn.style.padding = '0 6px';
+      removeBtn.style.fontSize = '1.2rem';
+      removeBtn.title = 'Hapus';
+      removeBtn.addEventListener('click', () => {
+        window.selectedIndicators.splice(index, 1);
+        initIndicatorSelectors();
+      });
+      wrapper.appendChild(removeBtn);
+    }
+
+    container.insertBefore(wrapper, addBtn);
+  });
+
+  // Handle add button visibility & click
+  addBtn.onclick = () => {
+    if (window.selectedIndicators.length < availableFeatures.length) {
+      // Find a feature not currently selected
+      const unselected = availableFeatures.find(f => !window.selectedIndicators.includes(f)) || availableFeatures[0];
+      window.selectedIndicators.push(unselected);
+      initIndicatorSelectors();
+    }
+  };
+  addBtn.style.display = window.selectedIndicators.length < availableFeatures.length ? 'block' : 'none';
+
+  renderIndicatorsChart();
+}
+
+function renderIndicatorsChart() {
+  const data = window.globalTrendData;
   const ctx = document.getElementById('chart-indicators');
-  if (!ctx) return;
+  if (!ctx || !data) return;
   if (chartIndicators) chartIndicators.destroy();
 
-  const colors = ['#f59e0b', '#ef4444', '#14b8a6', '#3b82f6', '#ec4899'];
+  const colors = ['#f59e0b', '#ef4444', '#14b8a6', '#3b82f6', '#ec4899', '#8b5cf6', '#10b981'];
   let datasets = [];
   
-  if (data.indicators) {
-    let i = 0;
-    for (const [key, values] of Object.entries(data.indicators)) {
-      datasets.push({
-        label: key,
-        data: values,
-        borderColor: colors[i % colors.length],
-        borderWidth: 2,
-        tension: 0.4,
-        pointRadius: 0
-      });
-      i++;
-    }
+  // Create mapping to avoid overlapping labels
+  const step = Math.max(1, Math.floor(data.labels.length / 12));
+  const displayLabels = data.labels.map((l, i) => i % step === 0 ? l : '');
+  
+  if (data.indicators && window.selectedIndicators) {
+    window.selectedIndicators.forEach((key, i) => {
+      if (data.indicators[key]) {
+        datasets.push({
+          label: key,
+          data: data.indicators[key],
+          borderColor: colors[i % colors.length],
+          borderWidth: 2,
+          tension: 0.4,
+          pointRadius: 0
+        });
+      }
+    });
   }
 
   chartIndicators = new Chart(ctx, {
