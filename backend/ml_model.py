@@ -66,27 +66,38 @@ class PredictiveModel:
         if dataset_path and os.path.exists(dataset_path):
             self.load_and_train(dataset_path)
 
-    def load_and_train(self, dataset_path):
+    def load_and_train(self, dataset_path=None, target_col=None, feature_cols=None):
         """
-        Memuat dataset CSV dan melatih kedua model secara otomatis.
+        Memuat dataset CSV (opsional jika sudah dimuat) dan melatih kedua model secara otomatis.
         
         Args:
-            dataset_path (str): Path ke file CSV dataset
+            dataset_path (str, optional): Path ke file CSV dataset
+            target_col (str, optional): Nama kolom target
+            feature_cols (list, optional): List nama kolom fitur
             
         Returns:
             dict: Metrik evaluasi kedua model
         """
         try:
             # ---- 1. Memuat Dataset ----
-            self.df = pd.read_csv(dataset_path)
-            self.dataset_path = dataset_path
-            print(f"[INFO] Dataset dimuat: {self.df.shape[0]} baris, {self.df.shape[1]} kolom")
+            if dataset_path:
+                self.df = pd.read_csv(dataset_path)
+                self.dataset_path = dataset_path
+                print(f"[INFO] Dataset dimuat: {self.df.shape[0]} baris, {self.df.shape[1]} kolom")
+            elif self.df is None:
+                raise ValueError("Dataset belum dimuat dan path tidak diberikan.")
 
             # ---- 2. Memisahkan Fitur dan Target ----
-            # Anggap kolom terakhir sebagai target
-            self.target_name = self.df.columns[-1]
+            # Gunakan kolom terakhir sebagai target default jika tidak dispesifikasikan
+            if target_col:
+                self.target_name = target_col
+            else:
+                self.target_name = self.df.columns[-1]
 
-            self.feature_names = [col for col in self.df.columns if col != self.target_name]
+            if feature_cols:
+                self.feature_names = feature_cols
+            else:
+                self.feature_names = [col for col in self.df.columns if col != self.target_name]
             
             X = self.df[self.feature_names].values
             y = self.df[self.target_name].values

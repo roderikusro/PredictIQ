@@ -288,19 +288,51 @@ def api_upload_csv():
 
         # Simpan file yang diunggah
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        filename = f"uploaded_{timestamp}.csv"
-        filepath = os.path.join(UPLOAD_DIR, filename)
-        file.save(filepath)
+        filename = f"uploaded_{timestamp}_{file.filename}"
+        file_path = os.path.join(UPLOAD_DIR, filename)
+        file.save(file_path)
 
-        # Latih ulang model dengan dataset baru
-        global model
-        model = PredictiveModel(dataset_path=filepath)
+        # Latih model dengan dataset baru
+        metrics = model.load_and_train(file_path)
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Dataset berhasil diunggah dan model telah dilatih',
+            'filename': filename,
+            'metrics': metrics
+        })
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/configure-model', methods=['POST'])
+def api_configure_model():
+    """
+    Mengonfigurasi ulang model dengan memilih fitur dan target baru,
+    kemudian melatih ulang model.
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'status': 'error', 'message': 'Data konfigurasi kosong'}), 400
+
+        target_col = data.get('target')
+        feature_cols = data.get('features')
+
+        if not target_col or not feature_cols:
+            return jsonify({'status': 'error', 'message': 'Target dan fitur harus dipilih'}), 400
+
+        if len(feature_cols) < 1:
+            return jsonify({'status': 'error', 'message': 'Minimal pilih 1 fitur'}), 400
+
+        # Latih ulang model
+        metrics = model.load_and_train(target_col=target_col, feature_cols=feature_cols)
 
         return jsonify({
             'status': 'success',
-            'message': 'Dataset berhasil diunggah dan model dilatih ulang',
-            'filename': filename,
-            'metrics': model.get_metrics()
+            'message': 'Model berhasil dikonfigurasi dan dilatih ulang',
+            'metrics': metrics
         })
 
     except Exception as e:

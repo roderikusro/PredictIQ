@@ -605,13 +605,66 @@ async function loadDataset() {
     // Data table
     renderDataTable(info.columns, info.data);
 
-
+    // Render Model Config
+    renderModelConfig(info);
 
   } catch (err) {
     console.error('Dataset error:', err);
     showToast('Gagal memuat dataset', 'error');
   }
 }
+
+function renderModelConfig(info) {
+  const targetSelect = document.getElementById('config-target');
+  const featuresContainer = document.getElementById('config-features-container');
+  if (!targetSelect || !featuresContainer) return;
+
+  // Populate target
+  targetSelect.innerHTML = info.columns.map(c => 
+    `<option value="${c}" ${c === info.target ? 'selected' : ''}>${c}</option>`
+  ).join('');
+
+  // Populate features
+  featuresContainer.innerHTML = info.columns.map(c => `
+    <label class="chip-checkbox" style="padding:6px 12px; font-size:0.85rem; border-radius:20px; background:var(--bg-card); border:1px solid var(--border); display:flex; align-items:center; cursor:pointer;">
+      <input type="checkbox" name="config-features" value="${c}" ${info.feature_names.includes(c) ? 'checked' : ''} style="margin-right:6px;">
+      ${c}
+    </label>
+  `).join('');
+}
+
+document.getElementById('config-model-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  
+  const target = document.getElementById('config-target').value;
+  const featureCheckboxes = document.querySelectorAll('input[name="config-features"]:checked');
+  const features = Array.from(featureCheckboxes).map(cb => cb.value);
+
+  if (features.length === 0) {
+    showToast('Minimal pilih 1 fitur!', 'error');
+    return;
+  }
+
+  showLoading(true);
+  try {
+    const res = await fetchAPI('/api/configure-model', 'POST', { target, features });
+    if (res.status === 'success') {
+      showToast('Konfigurasi berhasil dan model dilatih ulang!', 'success');
+      // Reload everything
+      await loadDashboard();
+      await loadDataset();
+      if (document.getElementById('page-eda').classList.contains('active')) {
+          loadEDA();
+      }
+    } else {
+      showToast(res.message || 'Gagal mengatur konfigurasi', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+});
 
 let _dsCurrentSortCol = null;
 let _dsCurrentSortAsc = true;

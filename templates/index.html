@@ -730,6 +730,32 @@
                 </div>
             </div>
 
+            <!-- Model Configuration -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <h3><i data-lucide="settings"></i> Konfigurasi Fitur & Target</h3>
+                </div>
+                <div class="card-body">
+                    <form id="config-model-form">
+                        <div style="margin-bottom: 16px;">
+                            <label for="config-target" style="display:block; margin-bottom:8px; font-weight:500;">Pilih Kolom Target</label>
+                            <select id="config-target" class="form-control" style="width:100%; padding:10px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:var(--bg-card); color:var(--text-primary);"></select>
+                        </div>
+                        <div style="margin-bottom: 16px;">
+                            <label style="display:block; margin-bottom:8px; font-weight:500;">Pilih Kolom Fitur (Centang untuk digunakan)</label>
+                            <div id="config-features-container" style="display:flex; flex-wrap:wrap; gap:10px; padding:12px; background:rgba(0,0,0,0.2); border-radius:8px;">
+                                <!-- Checkboxes will be injected here -->
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <button type="submit" class="btn btn-primary" id="btn-config-save">
+                                <i data-lucide="save"></i> Simpan & Latih Ulang
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
             <!-- Data Table -->
             <div class="card">
                 <div class="card-header">
