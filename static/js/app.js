@@ -644,6 +644,23 @@ function renderModelConfig(info) {
     });
     featuresContainer.appendChild(label);
   });
+
+  // Populate time configuration dropdowns
+  const timeYear = document.getElementById('config-time-year');
+  const timeQuarter = document.getElementById('config-time-quarter');
+  const timeMonth = document.getElementById('config-time-month');
+  
+  const populateTimeOptions = (selectElem, selectedVal) => {
+    if (!selectElem) return;
+    const defaultOpt = `<option value="">-- Tidak Ada --</option>`;
+    const options = info.columns.map(c => `<option value="${c}" ${c === selectedVal ? 'selected' : ''}>${c}</option>`).join('');
+    selectElem.innerHTML = defaultOpt + options;
+  };
+
+  const tc = info.time_cols || {};
+  populateTimeOptions(timeYear, tc.year);
+  populateTimeOptions(timeQuarter, tc.quarter);
+  populateTimeOptions(timeMonth, tc.month);
 }
 
 document.getElementById('config-model-form')?.addEventListener('submit', async (e) => {
@@ -653,6 +670,12 @@ document.getElementById('config-model-form')?.addEventListener('submit', async (
   const featureCheckboxes = document.querySelectorAll('input[name="config-features"]:checked');
   const features = Array.from(featureCheckboxes).map(cb => cb.value);
 
+  const time_cols = {
+    year: document.getElementById('config-time-year')?.value || null,
+    quarter: document.getElementById('config-time-quarter')?.value || null,
+    month: document.getElementById('config-time-month')?.value || null
+  };
+
   if (features.length === 0) {
     showToast('Minimal pilih 1 fitur!', 'error');
     return;
@@ -660,7 +683,7 @@ document.getElementById('config-model-form')?.addEventListener('submit', async (
 
   showLoading(true);
   try {
-    const res = await fetchAPI('/api/configure-model', 'POST', { target, features });
+    const res = await fetchAPI('/api/configure-model', 'POST', { target, features, time_cols });
     if (res.status === 'success') {
       showToast('Konfigurasi berhasil dan model dilatih ulang!', 'success');
       // Reload everything

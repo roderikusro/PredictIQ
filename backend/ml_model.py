@@ -61,12 +61,13 @@ class PredictiveModel:
         self.X_test = None
         self.y_train = None
         self.y_test = None
+        self.time_cols = {}
 
         # Muat dan latih model jika dataset tersedia
         if dataset_path and os.path.exists(dataset_path):
             self.load_and_train(dataset_path)
 
-    def load_and_train(self, dataset_path=None, target_col=None, feature_cols=None):
+    def load_and_train(self, dataset_path=None, target_col=None, feature_cols=None, time_cols=None):
         """
         Memuat dataset CSV (opsional jika sudah dimuat) dan melatih kedua model secara otomatis.
         
@@ -140,6 +141,9 @@ class PredictiveModel:
                     self.df[col].fillna(self.df[col].median(), inplace=True)
 
             # ---- 2. Memisahkan Fitur dan Target ----
+            if time_cols is not None:
+                self.time_cols = time_cols
+
             # Gunakan kolom terakhir sebagai target default jika tidak dispesifikasikan
             if target_col and target_col in numeric_cols:
                 self.target_name = target_col
@@ -463,7 +467,8 @@ class PredictiveModel:
             'dtypes': {col: str(dtype) for col, dtype in self.df.dtypes.items()},
             'statistics': json.loads(self.df.describe().to_json()),
             'feature_names': self.feature_names,
-            'target': self.target_name
+            'target': self.target_name,
+            'time_cols': self.time_cols
         }
 
     def get_model_info(self, model_type='linear_regression'):
@@ -521,21 +526,51 @@ class PredictiveModel:
 
     def get_trend_data(self):
         """
-        Mengembalikan data tren secara dinamis berdasarkan dataset yang ada.
+        Mengembalikan data tren secara dinamis berdasarkan dataset yang ada,
+        menggunakan konfigurasi kolom waktu jika tersedia.
         """
         if self.df is None:
             return None
 
-        # Gunakan kolom pertama sebagai label sumbu X (misal: Tahun/Waktu)
-        # Jika bukan numerik/string yang cocok, gunakan index
-        first_col = self.df.columns[0]
-        labels = self.df[first_col].astype(str).tolist()
+        labels = []
+        has_time_config = self.time_cols and any(self.time_cols.values())
+        
+        for i in range(len(self.df)):
+            if has_time_config:
+                label_parts = []
+                if self.time_cols.get('year') and self.time_cols['year'] in self.df.columns:
+                    # Coba format sebagai int untuk menghilangkan .0 jika tahun berbentuk float
+                    try:
+                        yr = int(float(self.df.iloc[i][self.time_cols['year']]))
+                        label_parts.append(str(yr))
+                    except:
+                        label_parts.append(str(self.df.iloc[i][self.time_cols['year']]))
+                
+                if self.time_cols.get('month') and self.time_cols['month'] in self.df.columns:
+                    label_parts.append(str(self.df.iloc[i][self.time_cols['month']]))
+                
+                if self.time_cols.get('quarter') and self.time_cols['quarter'] in self.df.columns:
+                    try:
+                        q = int(float(self.df.iloc[i][self.time_cols['quarter']]))
+                        label_parts.append(f"Q{q}")
+                    except:
+                        label_parts.append(f"Q{self.df.iloc[i][self.time_cols['quarter']]}")
+                
+                if label_parts:
+                    labels.append(" ".join(label_parts))
+                else:
+                    labels.append(str(self.df.iloc[i][self.df.columns[0]]))
+            else:
+                # Gunakan kolom pertama sebagai default jika tidak ada konfigurasi
+                first_col = self.df.columns[0]
+                labels.append(str(self.df.iloc[i][first_col]))
 
         # Gunakan beberapa fitur lain untuk grafik indikator (maksimal 3)
         indicators = {}
         for col in self.feature_names:
-            if col != first_col and len(indicators) < 3:
-                indicators[col] = self.df[col].tolist()
+            indicators[col] = self.df[col].tolist()
+            if len(indicators) >= 3:
+                break
 
         return {
             'labels': labels,

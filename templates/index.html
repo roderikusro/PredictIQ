@@ -747,6 +747,29 @@
                                 <!-- Checkboxes will be injected here -->
                             </div>
                         </div>
+                        <div style="margin-bottom: 16px;">
+                            <label style="display:block; margin-bottom:8px; font-weight:500;">Konfigurasi Kolom Waktu (Opsional, untuk label Grafik & Riwayat)</label>
+                            <div style="display:flex; gap:12px; flex-wrap:wrap;">
+                                <div style="flex:1; min-width:150px;">
+                                    <label for="config-time-year" style="font-size:0.85rem; color:var(--text-muted);">Kolom Tahun</label>
+                                    <select id="config-time-year" class="form-control" style="width:100%; padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:var(--bg-card); color:var(--text-primary);">
+                                        <option value="">-- Tidak Ada --</option>
+                                    </select>
+                                </div>
+                                <div style="flex:1; min-width:150px;">
+                                    <label for="config-time-quarter" style="font-size:0.85rem; color:var(--text-muted);">Kolom Kuartal</label>
+                                    <select id="config-time-quarter" class="form-control" style="width:100%; padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:var(--bg-card); color:var(--text-primary);">
+                                        <option value="">-- Tidak Ada --</option>
+                                    </select>
+                                </div>
+                                <div style="flex:1; min-width:150px;">
+                                    <label for="config-time-month" style="font-size:0.85rem; color:var(--text-muted);">Kolom Bulan</label>
+                                    <select id="config-time-month" class="form-control" style="width:100%; padding:8px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:var(--bg-card); color:var(--text-primary);">
+                                        <option value="">-- Tidak Ada --</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                         <div style="text-align: right;">
                             <button type="submit" class="btn btn-primary" id="btn-config-save">
                                 <i data-lucide="save"></i> Simpan & Latih Ulang

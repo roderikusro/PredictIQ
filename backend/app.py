@@ -319,6 +319,7 @@ def api_configure_model():
 
         target_col = data.get('target')
         feature_cols = data.get('features')
+        time_cols = data.get('time_cols')
 
         if not target_col or not feature_cols:
             return jsonify({'status': 'error', 'message': 'Target dan fitur harus dipilih'}), 400
@@ -327,7 +328,7 @@ def api_configure_model():
             return jsonify({'status': 'error', 'message': 'Minimal pilih 1 fitur'}), 400
 
         # Latih ulang model
-        metrics = model.load_and_train(target_col=target_col, feature_cols=feature_cols)
+        metrics = model.load_and_train(target_col=target_col, feature_cols=feature_cols, time_cols=time_cols)
 
         return jsonify({
             'status': 'success',
