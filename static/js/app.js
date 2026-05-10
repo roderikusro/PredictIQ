@@ -1054,8 +1054,9 @@ function showLoading(show) {
   else el.classList.remove('active');
 }
 
-// Refresh button
+// Refresh buttons & Export
 document.getElementById('btn-refresh-trend')?.addEventListener('click', loadDashboard);
+document.getElementById('btn-export-eda')?.addEventListener('click', exportEDATable);
 
 // ===========================================================
 //                    PERBANDINGAN MODEL
@@ -1519,4 +1520,34 @@ function renderEdaScatter(xCol, yCol) {
       }
     }
   });
+}
+
+function exportEDATable() {
+  const table = document.getElementById('eda-desc-table');
+  if (!table) return;
+  
+  let csvContent = "";
+  
+  // Get headers
+  const headers = Array.from(table.querySelectorAll('thead th')).map(th => `"${th.textContent.trim()}"`);
+  csvContent += headers.join(",") + "\n";
+  
+  // Get rows
+  const rows = table.querySelectorAll('tbody tr');
+  rows.forEach(tr => {
+    const cols = Array.from(tr.querySelectorAll('td')).map(td => `"${td.textContent.trim()}"`);
+    csvContent += cols.join(",") + "\n";
+  });
+  
+  // Create and trigger download
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const dateStr = new Date().toISOString().split('T')[0];
+  a.download = `Statistik_Deskriptif_${dateStr}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
