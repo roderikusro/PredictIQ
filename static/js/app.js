@@ -536,8 +536,7 @@ async function loadDataset() {
     // Data table
     renderDataTable(info.columns, info.data);
 
-    // Statistics table
-    renderStatsTable(info.statistics);
+
 
   } catch (err) {
     console.error('Dataset error:', err);
@@ -675,22 +674,6 @@ window.handleSort = function(col) {
   updateDatasetTable();
 };
 
-function renderStatsTable(statistics) {
-  const thead = document.getElementById('stats-thead');
-  const tbody = document.getElementById('stats-tbody');
-
-  const statKeys = Object.keys(statistics);
-  if (statKeys.length === 0) return;
-
-  const metrics = Object.keys(statistics[statKeys[0]]);
-
-  thead.innerHTML = '<tr><th>Statistik</th>' + statKeys.map(k => `<th>${k}</th>`).join('') + '</tr>';
-  tbody.innerHTML = metrics.map(m =>
-    '<tr><td><strong>' + m + '</strong></td>' +
-    statKeys.map(k => `<td>${parseFloat(statistics[k][m]).toFixed(2)}</td>`).join('') +
-    '</tr>'
-  ).join('');
-}
 
 function initDatasetSearch() {
   const input = document.getElementById('dataset-search');
