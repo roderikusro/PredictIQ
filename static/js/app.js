@@ -823,7 +823,7 @@ let _dsCurrentSortCol = null;
 let _dsCurrentSortAsc = true;
 let _dsSearchQuery = '';
 let _dsCurrentPage = 1;
-const _dsRowsPerPage = 5;
+const _dsRowsPerPage = 10;
 
 function renderDataTable(columns, data) {
   // Store for search
