@@ -100,6 +100,7 @@ def api_dashboard():
             'last_prediction': history[-1] if history else None,
             'features': model.feature_names,
             'target_name': model.target_name,
+            'time_cols': getattr(model, 'time_cols', {}),
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
         return jsonify(dashboard_data)

@@ -147,6 +147,7 @@ async function loadDashboard() {
         text.textContent = 'Model Aktif';
         window.globalFeatures = dashRes.features || [];
         window.globalTargetName = dashRes.target_name || 'Target';
+        window.globalTimeCols = dashRes.time_cols || {};
         renderDynamicForms();
       } else {
         dot.classList.add('inactive');
@@ -174,11 +175,31 @@ async function loadDashboard() {
 function renderDynamicForms() {
   if (!window.globalFeatures) return;
   const features = window.globalFeatures;
+  const timeCols = window.globalTimeCols || {};
   
   let inputsHtml = '';
+  
+  // Render time columns first if they exist and are not already in features
+  const timeValues = Object.values(timeCols).filter(Boolean);
+  const additionalTimeCols = timeValues.filter(t => !features.includes(t));
+  
+  additionalTimeCols.forEach(t => {
+    let label = t.replace(/_/g, ' ') + ' (Waktu)';
+    inputsHtml += `
+      <div class="form-group" style="background: rgba(139, 92, 246, 0.05); padding: 8px; border-radius: 6px; border-left: 2px solid #8b5cf6;">
+        <label style="color: #c4b5fd;">${label}</label>
+        <input type="number" name="${t}" value="0" step="any" required>
+      </div>
+    `;
+  });
+
+  // Render ML features
   features.forEach(f => {
     // Generate label cleanly by replacing underscores with spaces
     let label = f.replace(/_/g, ' ');
+    if (timeValues.includes(f)) {
+        label += ' (Waktu & Fitur)';
+    }
     inputsHtml += `
       <div class="form-group">
         <label>${label}</label>
