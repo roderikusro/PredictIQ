@@ -556,28 +556,32 @@ class PredictiveModel:
         if self.df is None:
             return None
         
+        # Buat dataframe khusus untuk EDA yang hanya berisi fitur terpilih dan target
+        selected_cols = list(dict.fromkeys(self.feature_names + [self.target_name]))
+        df_eda = self.df[selected_cols]
+
         # 1. Descriptive stats (hanya numerik)
-        desc = self.df.describe(include=[np.number]).to_dict()
+        desc = df_eda.describe(include=[np.number]).to_dict()
         
         # 2. Correlation Matrix (hanya numerik)
-        corr_matrix = self.df.corr(numeric_only=True)
+        corr_matrix = df_eda.corr(numeric_only=True)
         corr_dict = corr_matrix.round(3).to_dict()
 
         # 3. Missing values
-        missing_values = self.df.isnull().sum().to_dict()
+        missing_values = df_eda.isnull().sum().to_dict()
 
         # 4. Outlier detection (IQR method) & Skewness
         outliers_info = {}
         skewness_info = {}
-        for col in self.df.select_dtypes(include=[np.number]).columns:
-            Q1 = self.df[col].quantile(0.25)
-            Q3 = self.df[col].quantile(0.75)
+        for col in df_eda.select_dtypes(include=[np.number]).columns:
+            Q1 = df_eda[col].quantile(0.25)
+            Q3 = df_eda[col].quantile(0.75)
             IQR = Q3 - Q1
             lower_bound = Q1 - 1.5 * IQR
             upper_bound = Q3 + 1.5 * IQR
-            outliers = self.df[(self.df[col] < lower_bound) | (self.df[col] > upper_bound)]
+            outliers = df_eda[(df_eda[col] < lower_bound) | (df_eda[col] > upper_bound)]
             outliers_info[col] = len(outliers)
-            skewness_info[col] = self.df[col].skew()
+            skewness_info[col] = df_eda[col].skew()
 
         # 5. Generate Insights
         insights = []
@@ -620,7 +624,7 @@ class PredictiveModel:
 
         # 6. Scatter data preparation (sampling to avoid large payload if dataset is huge, but here it's 40 rows)
         # We can just pass the dataframe records
-        scatter_data = self.df.to_dict(orient='records')
+        scatter_data = df_eda.to_dict(orient='records')
 
         return {
             'descriptive': desc,
@@ -630,7 +634,7 @@ class PredictiveModel:
             'skewness': skewness_info,
             'insights': insights,
             'scatter_data': scatter_data,
-            'columns': list(self.df.columns),
-            'numeric_columns': self.df.select_dtypes(include=[np.number]).columns.tolist()
+            'columns': list(df_eda.columns),
+            'numeric_columns': df_eda.select_dtypes(include=[np.number]).columns.tolist()
         }
 
