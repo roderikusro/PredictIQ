@@ -47,6 +47,12 @@
                     </a>
                 </li>
                 <li>
+                    <a href="#" class="nav-link" data-page="eda" id="nav-eda">
+                        <i data-lucide="bar-chart"></i>
+                        <span>EDA</span>
+                    </a>
+                </li>
+                <li>
                     <a href="#" class="nav-link" data-page="prediksi" id="nav-prediksi">
                         <i data-lucide="sparkles"></i>
                         <span>Prediksi</span>
@@ -218,6 +224,98 @@
                             </thead>
                             <tbody id="history-body-dashboard"></tbody>
                         </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========== PAGE: EDA ========== -->
+        <section class="page" id="page-eda" style="display:none;">
+            <div class="page-header">
+                <div>
+                    <h2>Exploratory Data Analysis (EDA)</h2>
+                    <p class="page-subtitle">Analisis eksploratif untuk memahami distribusi, korelasi, dan pola dalam dataset</p>
+                </div>
+            </div>
+
+            <!-- Insights Card -->
+            <div class="card mb-4" id="eda-insights-card">
+                <div class="card-header">
+                    <h3><i data-lucide="lightbulb" style="color:#f59e0b;"></i> Auto Insights</h3>
+                </div>
+                <div class="card-body">
+                    <ul id="eda-insights-list" class="insight-list">
+                        <li>Memuat insights...</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="chart-grid">
+                <!-- Correlation Heatmap -->
+                <div class="chart-card" style="grid-column: 1 / -1;">
+                    <div class="chart-header">
+                        <h3>Korelasi Antar Variabel (Heatmap)</h3>
+                    </div>
+                    <div class="chart-body" style="overflow-x: auto;">
+                        <div id="eda-heatmap-container" class="heatmap-container"></div>
+                    </div>
+                </div>
+
+                <!-- Feature Distribution -->
+                <div class="chart-card">
+                    <div class="chart-header" style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3>Distribusi Data</h3>
+                        <select id="eda-dist-select" class="model-selector" style="padding:4px 8px; font-size:0.8rem;">
+                            <!-- Options populated by JS -->
+                        </select>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chart-eda-dist"></canvas>
+                    </div>
+                </div>
+
+                <!-- Scatter Plot -->
+                <div class="chart-card">
+                    <div class="chart-header" style="display:flex; justify-content:space-between; align-items:center; gap: 10px;">
+                        <h3>Scatter Plot</h3>
+                        <div style="display:flex; gap:8px;">
+                            <select id="eda-scatter-x" class="model-selector" style="padding:4px 8px; font-size:0.8rem;"></select>
+                            <span style="color:var(--text-muted);">vs</span>
+                            <select id="eda-scatter-y" class="model-selector" style="padding:4px 8px; font-size:0.8rem;"></select>
+                        </div>
+                    </div>
+                    <div class="chart-body">
+                        <canvas id="chart-eda-scatter"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-grid" style="margin-top: 24px; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));">
+                <!-- Descriptive Stats Summary -->
+                <div class="card" style="grid-column: 1 / -1;">
+                    <div class="card-header">
+                        <h3>Statistik Deskriptif</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="data-table" id="eda-desc-table">
+                                <thead>
+                                    <tr>
+                                        <th>Fitur</th>
+                                        <th>Mean</th>
+                                        <th>Median (50%)</th>
+                                        <th>Std Dev</th>
+                                        <th>Min</th>
+                                        <th>Max</th>
+                                        <th>Outliers (IQR)</th>
+                                        <th>Missing</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -686,6 +784,7 @@
                             <tbody id="dataset-tbody"></tbody>
                         </table>
                     </div>
+                    <div id="dataset-pagination" class="pagination-container"></div>
                 </div>
             </div>
 

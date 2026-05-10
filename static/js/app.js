@@ -17,7 +17,8 @@ const API = {
   history: '/api/history',
   upload: '/api/upload-csv',
   export: '/api/export',
-  clearHistory: '/api/clear-history'
+  clearHistory: '/api/clear-history',
+  eda: '/api/eda'
 };
 
 // ---- State Aplikasi ----
@@ -28,6 +29,9 @@ let chartCoefficients = null;
 let chartCompMetrics = null;
 let chartFeatureImp = null;
 let chartCompAVP = null;
+let chartEdaDist = null;
+let chartEdaScatter = null;
+let edaDataCache = null;
 
 // ---- Chart.js Global Config ----
 Chart.defaults.color = '#94a3b8';
@@ -87,6 +91,7 @@ function navigateTo(page) {
   // Load page data
   switch (page) {
     case 'dashboard': loadDashboard(); break;
+    case 'eda': loadEDA(); break;
     case 'prediksi': loadHistory(); break;
     case 'model': loadModelInfo(); break;
     case 'comparison': loadComparison(); break;
@@ -540,19 +545,135 @@ async function loadDataset() {
   }
 }
 
+let _dsCurrentSortCol = null;
+let _dsCurrentSortAsc = true;
+let _dsSearchQuery = '';
+let _dsCurrentPage = 1;
+const _dsRowsPerPage = 5;
+
 function renderDataTable(columns, data) {
-  const thead = document.getElementById('dataset-thead');
-  const tbody = document.getElementById('dataset-tbody');
-
-  thead.innerHTML = '<tr>' + columns.map(c => `<th>${c}</th>`).join('') + '</tr>';
-  tbody.innerHTML = data.map(row =>
-    '<tr>' + columns.map(c => `<td>${row[c] ?? ''}</td>`).join('') + '</tr>'
-  ).join('');
-
   // Store for search
   window._datasetColumns = columns;
   window._datasetData = data;
+  
+  _dsCurrentSortCol = null;
+  _dsCurrentSortAsc = true;
+  _dsSearchQuery = document.getElementById('dataset-search')?.value || '';
+  _dsCurrentPage = 1;
+  
+  updateDatasetTable();
 }
+
+function updateDatasetTable() {
+  if (!window._datasetData) return;
+  
+  let data = [...window._datasetData];
+
+  // 1. Filter
+  if (_dsSearchQuery) {
+    const q = _dsSearchQuery.toLowerCase();
+    data = data.filter(row => 
+      Object.values(row).some(v => String(v).toLowerCase().includes(q))
+    );
+  }
+
+  // 2. Sort
+  if (_dsCurrentSortCol) {
+    data.sort((a, b) => {
+      let valA = a[_dsCurrentSortCol];
+      let valB = b[_dsCurrentSortCol];
+      
+      let numA = parseFloat(valA);
+      let numB = parseFloat(valB);
+      
+      if (!isNaN(numA) && !isNaN(numB)) {
+        return _dsCurrentSortAsc ? numA - numB : numB - numA;
+      }
+      
+      valA = String(valA).toLowerCase();
+      valB = String(valB).toLowerCase();
+      if (valA < valB) return _dsCurrentSortAsc ? -1 : 1;
+      if (valA > valB) return _dsCurrentSortAsc ? 1 : -1;
+      return 0;
+    });
+  }
+
+  // 3. Pagination calculation
+  const totalRows = data.length;
+  const totalPages = Math.ceil(totalRows / _dsRowsPerPage) || 1;
+  
+  if (_dsCurrentPage > totalPages) _dsCurrentPage = totalPages;
+  if (_dsCurrentPage < 1) _dsCurrentPage = 1;
+
+  // 4. Slice current page
+  const startIdx = (_dsCurrentPage - 1) * _dsRowsPerPage;
+  const pageData = data.slice(startIdx, startIdx + _dsRowsPerPage);
+
+  // 5. Update Headers
+  const thead = document.getElementById('dataset-thead');
+  const cols = window._datasetColumns;
+  thead.innerHTML = '<tr>' + cols.map(c => {
+    let icon = '';
+    if (c === _dsCurrentSortCol) {
+      icon = _dsCurrentSortAsc ? ' <span style="font-size: 0.8em">▲</span>' : ' <span style="font-size: 0.8em">▼</span>';
+    } else {
+      icon = ' <span style="font-size: 0.8em; opacity: 0.3">↕</span>';
+    }
+    return `<th style="cursor: pointer; user-select: none;" onclick="window.handleSort('${c}')">${c}${icon}</th>`;
+  }).join('') + '</tr>';
+
+  // 6. Render Body
+  const tbody = document.getElementById('dataset-tbody');
+  if (pageData.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="${cols.length}" style="text-align:center;">Data tidak ditemukan</td></tr>`;
+  } else {
+    tbody.innerHTML = pageData.map(row =>
+      '<tr>' + cols.map(c => `<td>${row[c] ?? ''}</td>`).join('') + '</tr>'
+    ).join('');
+  }
+
+  // 7. Render Pagination
+  renderPagination(totalPages);
+}
+
+function renderPagination(totalPages) {
+  const container = document.getElementById('dataset-pagination');
+  if (!container) return;
+
+  if (totalPages <= 1) {
+    container.innerHTML = '';
+    return;
+  }
+
+  let html = `<button class="btn btn-sm btn-ghost" onclick="window.handlePageChange(${_dsCurrentPage - 1})" ${_dsCurrentPage === 1 ? 'disabled' : ''}>Prev</button>`;
+  
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === _dsCurrentPage) {
+      html += `<button class="btn btn-sm btn-primary" onclick="window.handlePageChange(${i})">${i}</button>`;
+    } else {
+      html += `<button class="btn btn-sm btn-ghost" onclick="window.handlePageChange(${i})">${i}</button>`;
+    }
+  }
+
+  html += `<button class="btn btn-sm btn-ghost" onclick="window.handlePageChange(${_dsCurrentPage + 1})" ${_dsCurrentPage === totalPages ? 'disabled' : ''}>Next</button>`;
+
+  container.innerHTML = html;
+}
+
+window.handlePageChange = function(newPage) {
+  _dsCurrentPage = newPage;
+  updateDatasetTable();
+};
+
+window.handleSort = function(col) {
+  if (_dsCurrentSortCol === col) {
+    _dsCurrentSortAsc = !_dsCurrentSortAsc;
+  } else {
+    _dsCurrentSortCol = col;
+    _dsCurrentSortAsc = true;
+  }
+  updateDatasetTable();
+};
 
 function renderStatsTable(statistics) {
   const thead = document.getElementById('stats-thead');
@@ -574,17 +695,9 @@ function renderStatsTable(statistics) {
 function initDatasetSearch() {
   const input = document.getElementById('dataset-search');
   input?.addEventListener('input', () => {
-    const q = input.value.toLowerCase();
-    if (!window._datasetData) return;
-
-    const filtered = window._datasetData.filter(row =>
-      Object.values(row).some(v => String(v).toLowerCase().includes(q))
-    );
-    const tbody = document.getElementById('dataset-tbody');
-    const cols = window._datasetColumns;
-    tbody.innerHTML = filtered.map(row =>
-      '<tr>' + cols.map(c => `<td>${row[c] ?? ''}</td>`).join('') + '</tr>'
-    ).join('');
+    _dsSearchQuery = input.value;
+    _dsCurrentPage = 1;
+    updateDatasetTable();
   });
 }
 
@@ -888,6 +1001,224 @@ function initCompareForm() {
       showToast('Error: ' + err.message, 'error');
     } finally {
       showLoading(false);
+    }
+  });
+}
+
+// ===========================================================
+//                    EDA (Exploratory Data Analysis)
+// ===========================================================
+async function loadEDA() {
+  try {
+    showLoading(true);
+    const res = await fetchAPI(API.eda);
+    if (res.status !== 'success') return;
+    edaDataCache = res.data;
+
+    // 1. Insights
+    const list = document.getElementById('eda-insights-list');
+    list.innerHTML = edaDataCache.insights.map(i => `<li>${i}</li>`).join('');
+
+    // 2. Heatmap
+    renderEdaHeatmap(edaDataCache.correlation, edaDataCache.columns);
+
+    // 3. Descriptive Stats Table
+    const tbody = document.querySelector('#eda-desc-table tbody');
+    tbody.innerHTML = '';
+    for (const col of edaDataCache.columns) {
+      const desc = edaDataCache.descriptive[col];
+      const out = edaDataCache.outliers[col] || 0;
+      const mis = edaDataCache.missing_values[col] || 0;
+      tbody.innerHTML += `
+        <tr>
+          <td><strong>${col}</strong></td>
+          <td>${desc.mean ? desc.mean.toFixed(2) : '-'}</td>
+          <td>${desc['50%'] ? desc['50%'].toFixed(2) : '-'}</td>
+          <td>${desc.std ? desc.std.toFixed(2) : '-'}</td>
+          <td>${desc.min ? desc.min.toFixed(2) : '-'}</td>
+          <td>${desc.max ? desc.max.toFixed(2) : '-'}</td>
+          <td style="color: ${out > 0 ? '#ef4444' : 'inherit'}; font-weight: ${out > 0 ? 'bold' : 'normal'}">${out}</td>
+          <td style="color: ${mis > 0 ? '#ef4444' : 'inherit'}; font-weight: ${mis > 0 ? 'bold' : 'normal'}">${mis}</td>
+        </tr>
+      `;
+    }
+
+    // 4. Populating Selects
+    const cols = edaDataCache.columns;
+    const distSelect = document.getElementById('eda-dist-select');
+    const xSelect = document.getElementById('eda-scatter-x');
+    const ySelect = document.getElementById('eda-scatter-y');
+    
+    [distSelect, xSelect, ySelect].forEach(sel => sel.innerHTML = '');
+    cols.forEach(c => {
+      distSelect.add(new Option(c, c));
+      xSelect.add(new Option(c, c));
+      ySelect.add(new Option(c, c));
+    });
+
+    // Default scatter selections
+    if (cols.length >= 2) {
+      xSelect.value = cols[0];
+      ySelect.value = cols[1];
+    }
+
+    // Initial Renders
+    renderEdaDist(distSelect.value);
+    renderEdaScatter(xSelect.value, ySelect.value);
+
+    // Event listeners
+    distSelect.onchange = (e) => renderEdaDist(e.target.value);
+    xSelect.onchange = (e) => renderEdaScatter(xSelect.value, ySelect.value);
+    ySelect.onchange = (e) => renderEdaScatter(xSelect.value, ySelect.value);
+
+    lucide.createIcons();
+  } catch (err) {
+    console.error('EDA error:', err);
+    showToast('Gagal memuat data EDA', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+function renderEdaHeatmap(corr, columns) {
+  const container = document.getElementById('eda-heatmap-container');
+  container.innerHTML = '';
+  const n = columns.length;
+  container.style.gridTemplateColumns = `100px repeat(${n}, 1fr)`;
+
+  // Header row
+  container.appendChild(document.createElement('div')); // empty top-left
+  columns.forEach(c => {
+    const el = document.createElement('div');
+    el.className = 'heatmap-label top';
+    el.textContent = c;
+    container.appendChild(el);
+  });
+
+  // Rows
+  columns.forEach(rowCol => {
+    // Row label
+    const label = document.createElement('div');
+    label.className = 'heatmap-label';
+    label.textContent = rowCol;
+    container.appendChild(label);
+
+    columns.forEach(colCol => {
+      const val = corr[rowCol][colCol];
+      const cell = document.createElement('div');
+      cell.className = 'heatmap-cell';
+      cell.textContent = val.toFixed(2);
+      
+      // Color logic (Blue for positive, Red for negative)
+      // opacity scaled by absolute value
+      const absVal = Math.abs(val);
+      if (val >= 0) {
+        cell.style.backgroundColor = `rgba(59, 130, 246, ${absVal})`;
+      } else {
+        cell.style.backgroundColor = `rgba(239, 68, 68, ${absVal})`;
+      }
+      
+      if (absVal < 0.4) cell.style.color = '#cbd5e1'; // light text for dark cells
+
+      cell.title = `${rowCol} vs ${colCol}: ${val.toFixed(3)}`;
+      container.appendChild(cell);
+    });
+  });
+}
+
+function renderEdaDist(col) {
+  if (!edaDataCache) return;
+  const ctx = document.getElementById('chart-eda-dist');
+  if (!ctx) return;
+  if (chartEdaDist) chartEdaDist.destroy();
+
+  const data = edaDataCache.scatter_data.map(d => d[col]);
+  
+  // Create simple histogram using bar chart
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const bins = 10;
+  const step = (max - min) / bins;
+  const hist = new Array(bins).fill(0);
+  const labels = [];
+  
+  for(let i=0; i<bins; i++) {
+    labels.push(`${(min + i*step).toFixed(1)} - ${(min + (i+1)*step).toFixed(1)}`);
+  }
+
+  data.forEach(val => {
+    let idx = Math.floor((val - min) / step);
+    if (idx >= bins) idx = bins - 1;
+    hist[idx]++;
+  });
+
+  chartEdaDist = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: `Distribusi ${col}`,
+        data: hist,
+        backgroundColor: 'rgba(139, 92, 246, 0.7)',
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: { backgroundColor: 'rgba(15,23,42,0.9)' }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 } } },
+        y: { grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderEdaScatter(xCol, yCol) {
+  if (!edaDataCache) return;
+  const ctx = document.getElementById('chart-eda-scatter');
+  if (!ctx) return;
+  if (chartEdaScatter) chartEdaScatter.destroy();
+
+  const scatterData = edaDataCache.scatter_data.map(d => ({
+    x: d[xCol],
+    y: d[yCol]
+  }));
+
+  chartEdaScatter = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: `${yCol} vs ${xCol}`,
+        data: scatterData,
+        backgroundColor: '#14b8a6',
+        pointRadius: 6,
+        pointHoverRadius: 8
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        tooltip: {
+          backgroundColor: 'rgba(15,23,42,0.9)',
+          callbacks: {
+            label: (ctx) => `(${ctx.parsed.x}, ${ctx.parsed.y})`
+          }
+        }
+      },
+      scales: {
+        x: { 
+          title: { display: true, text: xCol, color: '#94a3b8' },
+          grid: { color: 'rgba(255,255,255,0.04)' } 
+        },
+        y: { 
+          title: { display: true, text: yCol, color: '#94a3b8' },
+          grid: { color: 'rgba(255,255,255,0.04)' } 
+        }
+      }
     }
   });
 }

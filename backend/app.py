@@ -158,6 +158,23 @@ def api_model_comparison():
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
 
+@app.route('/api/eda', methods=['GET'])
+def api_eda():
+    """
+    Mengembalikan data Exploratory Data Analysis (EDA).
+    Termasuk korelasi, outlier, skewness, descriptive stats, dan insight.
+    """
+    try:
+        eda_data = model.get_eda()
+        if eda_data:
+            return jsonify({'status': 'success', 'data': eda_data})
+        else:
+            return jsonify({'status': 'error', 'message': 'Dataset belum dimuat'}), 404
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
 @app.route('/api/trend', methods=['GET'])
 def api_trend():
     """

@@ -473,3 +473,89 @@ class PredictiveModel:
     def clear_history(self):
         """Menghapus riwayat prediksi."""
         self.prediction_history = []
+
+    def get_eda(self):
+        """
+        Melakukan Exploratory Data Analysis dan mengembalikan data 
+        untuk divisualisasikan di frontend.
+        """
+        if self.df is None:
+            return None
+        
+        # 1. Descriptive stats
+        desc = self.df.describe().to_dict()
+        
+        # 2. Correlation Matrix
+        corr_matrix = self.df.corr()
+        corr_dict = corr_matrix.round(3).to_dict()
+
+        # 3. Missing values
+        missing_values = self.df.isnull().sum().to_dict()
+
+        # 4. Outlier detection (IQR method) & Skewness
+        outliers_info = {}
+        skewness_info = {}
+        for col in self.df.select_dtypes(include=[np.number]).columns:
+            Q1 = self.df[col].quantile(0.25)
+            Q3 = self.df[col].quantile(0.75)
+            IQR = Q3 - Q1
+            lower_bound = Q1 - 1.5 * IQR
+            upper_bound = Q3 + 1.5 * IQR
+            outliers = self.df[(self.df[col] < lower_bound) | (self.df[col] > upper_bound)]
+            outliers_info[col] = len(outliers)
+            skewness_info[col] = self.df[col].skew()
+
+        # 5. Generate Insights
+        insights = []
+        
+        # Insight: Highest correlations (excluding self and target)
+        highest_corr = 0
+        corr_pair = ("", "")
+        features_only = [c for c in corr_matrix.columns if c != 'GDP_Growth_Persen']
+        for i in range(len(features_only)):
+            for j in range(i+1, len(features_only)):
+                f1, f2 = features_only[i], features_only[j]
+                val = abs(corr_matrix.loc[f1, f2])
+                if val > highest_corr:
+                    highest_corr = val
+                    corr_pair = (f1, f2)
+        
+        if highest_corr > 0.8:
+            insights.append(f"Potensi Multikolinearitas: {corr_pair[0]} dan {corr_pair[1]} memiliki korelasi sangat kuat ({highest_corr:.2f}).")
+        elif highest_corr > 0.6:
+            insights.append(f"Korelasi tertinggi antar fitur: {corr_pair[0]} dan {corr_pair[1]} ({highest_corr:.2f}).")
+            
+        # Insight: Correlation with target
+        if 'GDP_Growth_Persen' in corr_matrix.columns:
+            target_corr = corr_matrix['GDP_Growth_Persen'].drop('GDP_Growth_Persen').abs().sort_values(ascending=False)
+            top_feature = target_corr.index[0]
+            insights.append(f"Fitur '{top_feature}' memiliki korelasi terkuat dengan GDP Growth ({corr_matrix.loc[top_feature, 'GDP_Growth_Persen']:.2f}).")
+
+        # Insight: Outliers
+        total_outliers = sum(outliers_info.values())
+        if total_outliers > 0:
+            cols_with_outliers = [k for k, v in outliers_info.items() if v > 0]
+            insights.append(f"Ditemukan {total_outliers} potensi outlier pada variabel: {', '.join(cols_with_outliers)}.")
+        else:
+            insights.append("Tidak ditemukan outlier signifikan menggunakan metode IQR.")
+
+        # Insight: Skewness
+        skewed_cols = [k for k, v in skewness_info.items() if abs(v) > 1]
+        if skewed_cols:
+            insights.append(f"Distribusi tidak normal (skewed) terdeteksi pada: {', '.join(skewed_cols)}.")
+
+        # 6. Scatter data preparation (sampling to avoid large payload if dataset is huge, but here it's 40 rows)
+        # We can just pass the dataframe records
+        scatter_data = self.df.to_dict(orient='records')
+
+        return {
+            'descriptive': desc,
+            'correlation': corr_dict,
+            'missing_values': missing_values,
+            'outliers': outliers_info,
+            'skewness': skewness_info,
+            'insights': insights,
+            'scatter_data': scatter_data,
+            'columns': list(self.df.columns)
+        }
+
