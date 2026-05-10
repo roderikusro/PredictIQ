@@ -619,14 +619,16 @@ function renderModelConfig(info) {
   const featuresContainer = document.getElementById('config-features-container');
   if (!targetSelect || !featuresContainer) return;
 
+  const numCols = info.numeric_columns || info.columns;
+
   // Populate target
-  targetSelect.innerHTML = info.columns.map(c => 
+  targetSelect.innerHTML = numCols.map(c => 
     `<option value="${c}" ${c === info.target ? 'selected' : ''}>${c}</option>`
   ).join('');
 
   // Populate features
   featuresContainer.innerHTML = '';
-  info.columns.map(c => {
+  numCols.map(c => {
     const isChecked = info.feature_names.includes(c);
     const label = document.createElement('label');
     label.className = `chip-checkbox ${isChecked ? 'active' : ''}`;
@@ -1138,9 +1140,10 @@ async function loadEDA() {
     // 2. Heatmap Selectors & Initial Render
     const heatmapSelectors = document.getElementById('heatmap-var-selectors');
     heatmapSelectors.innerHTML = '';
-    let selectedHeatmapCols = [...edaDataCache.columns];
+    const numCols = edaDataCache.numeric_columns || edaDataCache.columns;
+    let selectedHeatmapCols = [...numCols];
 
-    edaDataCache.columns.forEach(col => {
+    numCols.forEach(col => {
       const label = document.createElement('label');
       label.className = 'chip-checkbox active';
       label.innerHTML = `<input type="checkbox" value="${col}" checked> ${col}`;
@@ -1155,7 +1158,7 @@ async function loadEDA() {
           selectedHeatmapCols = selectedHeatmapCols.filter(c => c !== col);
         }
         // Maintain original column order
-        selectedHeatmapCols.sort((a, b) => edaDataCache.columns.indexOf(a) - edaDataCache.columns.indexOf(b));
+        selectedHeatmapCols.sort((a, b) => numCols.indexOf(a) - numCols.indexOf(b));
         renderEdaHeatmap(edaDataCache.correlation, selectedHeatmapCols);
       });
       heatmapSelectors.appendChild(label);
@@ -1166,10 +1169,13 @@ async function loadEDA() {
     // 3. Descriptive Stats Table
     const tbody = document.querySelector('#eda-desc-table tbody');
     tbody.innerHTML = '';
-    for (const col of edaDataCache.columns) {
+    for (const col of numCols) {
       const desc = edaDataCache.descriptive[col];
       const out = edaDataCache.outliers[col] || 0;
       const mis = edaDataCache.missing_values[col] || 0;
+      
+      if (!desc) continue; // Skip if no descriptive stats
+      
       tbody.innerHTML += `
         <tr>
           <td><strong>${col}</strong></td>
@@ -1185,27 +1191,31 @@ async function loadEDA() {
     }
 
     // 4. Populating Selects
-    const cols = edaDataCache.columns;
     const distSelect = document.getElementById('eda-dist-select');
     const xSelect = document.getElementById('eda-scatter-x');
     const ySelect = document.getElementById('eda-scatter-y');
     
     [distSelect, xSelect, ySelect].forEach(sel => sel.innerHTML = '');
-    cols.forEach(c => {
+    numCols.forEach(c => {
       distSelect.add(new Option(c, c));
       xSelect.add(new Option(c, c));
       ySelect.add(new Option(c, c));
     });
 
     // Default scatter selections
-    if (cols.length >= 2) {
-      xSelect.value = cols[0];
-      ySelect.value = cols[1];
+    if (numCols.length >= 2) {
+      xSelect.value = numCols[0];
+      ySelect.value = numCols[1];
+    } else if (numCols.length === 1) {
+      xSelect.value = numCols[0];
+      ySelect.value = numCols[0];
     }
 
     // Initial Renders
     renderEdaDist(distSelect.value);
-    renderEdaScatter(xSelect.value, ySelect.value);
+    if (numCols.length > 0) {
+      renderEdaScatter(xSelect.value, ySelect.value);
+    }
 
     // Event listeners
     distSelect.onchange = (e) => renderEdaDist(e.target.value);

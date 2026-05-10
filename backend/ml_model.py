@@ -81,24 +81,32 @@ class PredictiveModel:
         try:
             # ---- 1. Memuat Dataset ----
             if dataset_path:
-                self.df = pd.read_csv(dataset_path)
+                self.df = pd.read_csv(dataset_path, sep=None, engine='python')
                 self.dataset_path = dataset_path
                 print(f"[INFO] Dataset dimuat: {self.df.shape[0]} baris, {self.df.shape[1]} kolom")
             elif self.df is None:
                 raise ValueError("Dataset belum dimuat dan path tidak diberikan.")
 
+            # Filter kolom numerik
+            numeric_cols = self.df.select_dtypes(include=[np.number]).columns.tolist()
+            if not numeric_cols:
+                raise ValueError("Tidak ditemukan kolom numerik dalam dataset untuk dilatih.")
+
             # ---- 2. Memisahkan Fitur dan Target ----
             # Gunakan kolom terakhir sebagai target default jika tidak dispesifikasikan
-            if target_col:
+            if target_col and target_col in numeric_cols:
                 self.target_name = target_col
             else:
-                self.target_name = self.df.columns[-1]
+                self.target_name = numeric_cols[-1]
 
             if feature_cols:
-                self.feature_names = feature_cols
+                self.feature_names = [col for col in feature_cols if col in numeric_cols and col != self.target_name]
             else:
-                self.feature_names = [col for col in self.df.columns if col != self.target_name]
+                self.feature_names = [col for col in numeric_cols if col != self.target_name]
             
+            if not self.feature_names:
+                raise ValueError("Minimal 1 fitur numerik harus dipilih untuk melatih model.")
+
             X = self.df[self.feature_names].values
             y = self.df[self.target_name].values
 
@@ -398,8 +406,11 @@ class PredictiveModel:
         if self.df is None:
             return None
 
+        numeric_cols = self.df.select_dtypes(include=[np.number]).columns.tolist()
+
         return {
             'columns': self.df.columns.tolist(),
+            'numeric_columns': numeric_cols,
             'shape': {'rows': self.df.shape[0], 'cols': self.df.shape[1]},
             'data': self.df.to_dict(orient='records'),
             'dtypes': {col: str(dtype) for col, dtype in self.df.dtypes.items()},
@@ -498,11 +509,11 @@ class PredictiveModel:
         if self.df is None:
             return None
         
-        # 1. Descriptive stats
-        desc = self.df.describe().to_dict()
+        # 1. Descriptive stats (hanya numerik)
+        desc = self.df.describe(include=[np.number]).to_dict()
         
-        # 2. Correlation Matrix
-        corr_matrix = self.df.corr()
+        # 2. Correlation Matrix (hanya numerik)
+        corr_matrix = self.df.corr(numeric_only=True)
         corr_dict = corr_matrix.round(3).to_dict()
 
         # 3. Missing values
@@ -572,6 +583,7 @@ class PredictiveModel:
             'skewness': skewness_info,
             'insights': insights,
             'scatter_data': scatter_data,
-            'columns': list(self.df.columns)
+            'columns': list(self.df.columns),
+            'numeric_columns': self.df.select_dtypes(include=[np.number]).columns.tolist()
         }
 
