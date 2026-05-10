@@ -331,9 +331,11 @@ function initIndicatorSelectors() {
     select.style.fontSize = '0.9rem';
     select.style.width = 'auto';
     select.style.minWidth = '120px';
-    select.style.background = 'rgba(255,255,255,0.05)';
+    select.style.background = 'var(--bg-card)';
     select.style.border = '1px solid rgba(255,255,255,0.1)';
-    select.style.color = '#fff';
+    select.style.color = 'var(--text-primary)';
+    select.style.borderRadius = '6px';
+    select.style.outline = 'none';
 
     availableFeatures.forEach(f => {
       const option = document.createElement('option');
