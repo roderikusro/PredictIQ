@@ -83,6 +83,19 @@ class PredictiveModel:
             if dataset_path:
                 self.df = pd.read_csv(dataset_path, sep=None, engine='python')
                 self.dataset_path = dataset_path
+                
+                # Pembersihan cerdas: Coba paksa konversi kolom objek ke numerik
+                for col in self.df.columns:
+                    if self.df[col].dtype == 'object':
+                        # Coba bersihkan spasi dan hapus koma ribuan (contoh: "1,000.5" -> "1000.5")
+                        # Jika formatnya "1.000,5", akan butuh penyesuaian khusus, namun secara umum
+                        # kita coba `to_numeric` dengan coerce
+                        converted = pd.to_numeric(self.df[col].astype(str).str.replace(',', ''), errors='coerce')
+                        
+                        # Jika sebagian besar (>50%) berhasil dikonversi menjadi angka, anggap ini kolom numerik
+                        if converted.notna().sum() > len(self.df) * 0.5:
+                            self.df[col] = converted
+
                 print(f"[INFO] Dataset dimuat: {self.df.shape[0]} baris, {self.df.shape[1]} kolom")
             elif self.df is None:
                 raise ValueError("Dataset belum dimuat dan path tidak diberikan.")
@@ -91,6 +104,11 @@ class PredictiveModel:
             numeric_cols = self.df.select_dtypes(include=[np.number]).columns.tolist()
             if not numeric_cols:
                 raise ValueError("Tidak ditemukan kolom numerik dalam dataset untuk dilatih.")
+
+            # Imputasi nilai kosong (NaN) dengan median untuk mencegah error pada Scaler
+            for col in numeric_cols:
+                if self.df[col].isna().any():
+                    self.df[col].fillna(self.df[col].median(), inplace=True)
 
             # ---- 2. Memisahkan Fitur dan Target ----
             # Gunakan kolom terakhir sebagai target default jika tidak dispesifikasikan
