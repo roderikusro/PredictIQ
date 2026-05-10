@@ -145,6 +145,9 @@ async function loadDashboard() {
       if (dashRes.model_trained) {
         dot.classList.remove('inactive');
         text.textContent = 'Model Aktif';
+        window.globalFeatures = dashRes.features || [];
+        window.globalTargetName = dashRes.target_name || 'Target';
+        renderDynamicForms();
       } else {
         dot.classList.add('inactive');
         text.textContent = 'Model Tidak Aktif';
@@ -168,6 +171,51 @@ async function loadDashboard() {
   }
 }
 
+function renderDynamicForms() {
+  if (!window.globalFeatures) return;
+  const features = window.globalFeatures;
+  
+  let inputsHtml = '';
+  features.forEach(f => {
+    // Generate label cleanly by replacing underscores with spaces
+    let label = f.replace(/_/g, ' ');
+    inputsHtml += `
+      <div class="form-group">
+        <label>${label}</label>
+        <input type="number" name="${f}" value="0" step="any" required>
+      </div>
+    `;
+  });
+
+  const predictContainer = document.getElementById('dynamic-prediction-inputs');
+  if (predictContainer) {
+    predictContainer.innerHTML = inputsHtml;
+  }
+
+  const compareContainer = document.getElementById('dynamic-compare-inputs');
+  if (compareContainer) {
+    compareContainer.innerHTML = inputsHtml;
+  }
+  
+  // Update result label based on target
+  document.querySelectorAll('.result-label, .comp-result-unit').forEach(el => {
+    if (el.classList.contains('result-label')) {
+      el.textContent = `Prediksi ${window.globalTargetName}`;
+    } else {
+      el.textContent = window.globalTargetName;
+    }
+  });
+
+  // Ganti teks statis apa pun yang menyebut GDP dengan nama target asli
+  document.querySelectorAll('h2, h3, p, span').forEach(el => {
+    if (el.childNodes.length === 1 && el.childNodes[0].nodeType === 3) {
+      if (el.textContent.includes('GDP Growth') || el.textContent.includes('GDP')) {
+        el.textContent = el.textContent.replace(/GDP Growth/gi, window.globalTargetName).replace(/GDP/gi, window.globalTargetName);
+      }
+    }
+  });
+}
+
 function renderGDPChart(data) {
   const ctx = document.getElementById('chart-gdp-trend');
   if (!ctx) return;
@@ -182,8 +230,8 @@ function renderGDPChart(data) {
     data: {
       labels: data.labels,
       datasets: [{
-        label: 'GDP Growth (%)',
-        data: data.gdp_growth,
+        label: data.target_name || 'Target',
+        data: data.target_data,
         borderColor: '#8b5cf6',
         backgroundColor: createGradient(ctx, '#8b5cf6'),
         borderWidth: 2.5,
@@ -230,15 +278,29 @@ function renderIndicatorsChart(data) {
   if (!ctx) return;
   if (chartIndicators) chartIndicators.destroy();
 
+  const colors = ['#f59e0b', '#ef4444', '#14b8a6', '#3b82f6', '#ec4899'];
+  let datasets = [];
+  
+  if (data.indicators) {
+    let i = 0;
+    for (const [key, values] of Object.entries(data.indicators)) {
+      datasets.push({
+        label: key,
+        data: values,
+        borderColor: colors[i % colors.length],
+        borderWidth: 2,
+        tension: 0.4,
+        pointRadius: 0
+      });
+      i++;
+    }
+  }
+
   chartIndicators = new Chart(ctx, {
     type: 'line',
     data: {
       labels: data.labels,
-      datasets: [
-        { label: 'Inflasi (%)', data: data.inflasi, borderColor: '#f59e0b', borderWidth: 2, tension: 0.4, pointRadius: 0 },
-        { label: 'Pengangguran (%)', data: data.pengangguran, borderColor: '#ef4444', borderWidth: 2, tension: 0.4, pointRadius: 0 },
-        { label: 'Suku Bunga (%)', data: data.suku_bunga, borderColor: '#14b8a6', borderWidth: 2, tension: 0.4, pointRadius: 0 }
-      ]
+      datasets: datasets
     },
     options: {
       responsive: true,
@@ -369,16 +431,23 @@ function renderPredictHistory(history) {
   table.style.display = 'block';
 
   const reversed = [...history].reverse();
-  tbody.innerHTML = reversed.map((h, i) => `
+  tbody.innerHTML = reversed.map((h, i) => {
+    // Collect first 2 features to show
+    let featuresList = [];
+    if (h.input) {
+      const keys = Object.keys(h.input);
+      if (keys.length > 0) featuresList.push(`${keys[0]}: ${h.input[keys[0]]}`);
+      if (keys.length > 1) featuresList.push(`${keys[1]}: ${h.input[keys[1]]}`);
+    }
+    
+    return `
     <tr>
       <td>${history.length - i}</td>
       <td>${h.timestamp}</td>
-      <td>${h.input.Tahun || '—'}</td>
-      <td>Q${h.input.Kuartal || '—'}</td>
-      <td>${h.input.Inflasi_Persen || '—'}%</td>
-      <td><strong style="color:#8b5cf6">${h.prediction}%</strong></td>
+      <td colspan="3"><span style="font-size:0.85rem;color:var(--text-secondary);">${featuresList.join(' | ')} ...</span></td>
+      <td><strong style="color:#8b5cf6">${h.prediction}</strong></td>
     </tr>
-  `).join('');
+  `}).join('');
 }
 
 // ===========================================================

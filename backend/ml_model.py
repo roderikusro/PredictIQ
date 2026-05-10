@@ -53,6 +53,7 @@ class PredictiveModel:
         # Shared state
         self.is_trained = False
         self.feature_names = []
+        self.target_name = None
         self.prediction_history = []
         self.dataset_path = dataset_path
         self.df = None
@@ -82,15 +83,13 @@ class PredictiveModel:
             print(f"[INFO] Dataset dimuat: {self.df.shape[0]} baris, {self.df.shape[1]} kolom")
 
             # ---- 2. Memisahkan Fitur dan Target ----
-            target_col = 'GDP_Growth_Persen'
+            # Anggap kolom terakhir sebagai target
+            self.target_name = self.df.columns[-1]
 
-            if target_col not in self.df.columns:
-                raise ValueError(f"Kolom target '{target_col}' tidak ditemukan dalam dataset")
-
-            self.feature_names = [col for col in self.df.columns if col != target_col]
+            self.feature_names = [col for col in self.df.columns if col != self.target_name]
             
             X = self.df[self.feature_names].values
-            y = self.df[target_col].values
+            y = self.df[self.target_name].values
 
             # ---- 3. Split Data Training dan Testing (80:20) ----
             self.X_train, self.X_test, self.y_train, self.y_test = train_test_split(
@@ -395,7 +394,7 @@ class PredictiveModel:
             'dtypes': {col: str(dtype) for col, dtype in self.df.dtypes.items()},
             'statistics': json.loads(self.df.describe().to_json()),
             'feature_names': self.feature_names,
-            'target': 'GDP_Growth_Persen'
+            'target': self.target_name
         }
 
     def get_model_info(self, model_type='linear_regression'):
@@ -414,7 +413,7 @@ class PredictiveModel:
                 'model_type': 'Random Forest',
                 'library': 'scikit-learn',
                 'features': self.feature_names,
-                'target': 'GDP_Growth_Persen',
+                'target': self.target_name,
                 'n_estimators': 100,
                 'max_depth': 8,
                 'feature_importance': feature_imp,
@@ -437,7 +436,7 @@ class PredictiveModel:
                 'model_type': 'Linear Regression',
                 'library': 'scikit-learn',
                 'features': self.feature_names,
-                'target': 'GDP_Growth_Persen',
+                'target': self.target_name,
                 'coefficients': coefficients,
                 'intercept': round(float(self.lr_model.intercept_), 6),
                 'metrics': self.lr_metrics,
@@ -453,21 +452,27 @@ class PredictiveModel:
 
     def get_trend_data(self):
         """
-        Mengembalikan data tren untuk grafik di dashboard.
+        Mengembalikan data tren secara dinamis berdasarkan dataset yang ada.
         """
         if self.df is None:
             return None
 
-        labels = [f"{int(row['Tahun'])}-Q{int(row['Kuartal'])}" for _, row in self.df.iterrows()]
+        # Gunakan kolom pertama sebagai label sumbu X (misal: Tahun/Waktu)
+        # Jika bukan numerik/string yang cocok, gunakan index
+        first_col = self.df.columns[0]
+        labels = self.df[first_col].astype(str).tolist()
+
+        # Gunakan beberapa fitur lain untuk grafik indikator (maksimal 3)
+        indicators = {}
+        for col in self.feature_names:
+            if col != first_col and len(indicators) < 3:
+                indicators[col] = self.df[col].tolist()
 
         return {
             'labels': labels,
-            'gdp_growth': self.df['GDP_Growth_Persen'].tolist(),
-            'inflasi': self.df['Inflasi_Persen'].tolist(),
-            'pengangguran': self.df['Pengangguran_Persen'].tolist(),
-            'investasi': self.df['Investasi_Triliun'].tolist(),
-            'ekspor': self.df['Ekspor_Miliar_USD'].tolist(),
-            'suku_bunga': self.df['Suku_Bunga_Persen'].tolist()
+            'target_name': self.target_name,
+            'target_data': self.df[self.target_name].tolist(),
+            'indicators': indicators
         }
 
     def clear_history(self):
@@ -511,7 +516,7 @@ class PredictiveModel:
         # Insight: Highest correlations (excluding self and target)
         highest_corr = 0
         corr_pair = ("", "")
-        features_only = [c for c in corr_matrix.columns if c != 'GDP_Growth_Persen']
+        features_only = [c for c in corr_matrix.columns if c != self.target_name]
         for i in range(len(features_only)):
             for j in range(i+1, len(features_only)):
                 f1, f2 = features_only[i], features_only[j]
@@ -526,10 +531,10 @@ class PredictiveModel:
             insights.append(f"Korelasi tertinggi antar fitur: {corr_pair[0]} dan {corr_pair[1]} ({highest_corr:.2f}).")
             
         # Insight: Correlation with target
-        if 'GDP_Growth_Persen' in corr_matrix.columns:
-            target_corr = corr_matrix['GDP_Growth_Persen'].drop('GDP_Growth_Persen').abs().sort_values(ascending=False)
+        if self.target_name in corr_matrix.columns:
+            target_corr = corr_matrix[self.target_name].drop(self.target_name).abs().sort_values(ascending=False)
             top_feature = target_corr.index[0]
-            insights.append(f"Fitur '{top_feature}' memiliki korelasi terkuat dengan GDP Growth ({corr_matrix.loc[top_feature, 'GDP_Growth_Persen']:.2f}).")
+            insights.append(f"Fitur '{top_feature}' memiliki korelasi terkuat dengan target '{self.target_name}' ({corr_matrix.loc[top_feature, self.target_name]:.2f}).")
 
         # Insight: Outliers
         total_outliers = sum(outliers_info.values())

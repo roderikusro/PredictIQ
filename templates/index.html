@@ -349,47 +349,7 @@
                                         <option value="random_forest">Random Forest</option>
                                     </select>
                                 </div>
-                                <div class="form-group">
-                                    <label for="input-tahun">Tahun</label>
-                                    <input type="number" id="input-tahun" name="Tahun" value="2025" min="2000" max="2050" step="1" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="input-kuartal">Kuartal</label>
-                                    <select id="input-kuartal" name="Kuartal" required>
-                                        <option value="1">Q1 (Jan-Mar)</option>
-                                        <option value="2">Q2 (Apr-Jun)</option>
-                                        <option value="3">Q3 (Jul-Sep)</option>
-                                        <option value="4">Q4 (Okt-Des)</option>
-                                    </select>
-                                </div>
-                                <div class="form-group">
-                                    <label for="input-populasi">Populasi (Juta)</label>
-                                    <input type="number" id="input-populasi" name="Populasi_Juta" value="280.0" step="0.1" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="input-inflasi">Inflasi (%)</label>
-                                    <input type="number" id="input-inflasi" name="Inflasi_Persen" value="3.0" step="0.01" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="input-suku-bunga">Suku Bunga (%)</label>
-                                    <input type="number" id="input-suku-bunga" name="Suku_Bunga_Persen" value="5.75" step="0.25" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="input-pengangguran">Pengangguran (%)</label>
-                                    <input type="number" id="input-pengangguran" name="Pengangguran_Persen" value="5.0" step="0.01" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="input-investasi">Investasi (Triliun IDR)</label>
-                                    <input type="number" id="input-investasi" name="Investasi_Triliun" value="275.0" step="0.1" required>
-                                </div>
-                                <div class="form-group">
-                                    <label for="input-ekspor">Ekspor (Miliar USD)</label>
-                                    <input type="number" id="input-ekspor" name="Ekspor_Miliar_USD" value="58.0" step="0.1" required>
-                                </div>
-                                <div class="form-group full-width">
-                                    <label for="input-konsumsi">Konsumsi Rumah Tangga (Triliun IDR)</label>
-                                    <input type="number" id="input-konsumsi" name="Konsumsi_RT_Triliun" value="1950.0" step="0.1" required>
-                                </div>
+                                <div id="dynamic-prediction-inputs" style="display: contents;"></div>
                             </div>
 
                             <div class="form-actions">
@@ -470,10 +430,8 @@
                                         <tr>
                                             <th>No</th>
                                             <th>Waktu</th>
-                                            <th>Tahun</th>
-                                            <th>Q</th>
-                                            <th>Inflasi</th>
-                                            <th>Prediksi GDP (%)</th>
+                                            <th colspan="3">Input Features Summary</th>
+                                            <th>Prediksi Target</th>
                                         </tr>
                                     </thead>
                                     <tbody id="history-body-predict"></tbody>
@@ -916,45 +874,7 @@
                 <div class="card-body">
                     <form id="compare-form">
                         <div class="form-grid">
-                            <div class="form-group">
-                                <label for="comp-tahun">Tahun</label>
-                                <input type="number" id="comp-tahun" name="Tahun" value="2025" min="2000" max="2050" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="comp-kuartal">Kuartal</label>
-                                <select id="comp-kuartal" name="Kuartal" required>
-                                    <option value="1">Q1</option><option value="2">Q2</option>
-                                    <option value="3">Q3</option><option value="4">Q4</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="comp-populasi">Populasi (Juta)</label>
-                                <input type="number" id="comp-populasi" name="Populasi_Juta" value="280" step="0.1" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="comp-inflasi">Inflasi (%)</label>
-                                <input type="number" id="comp-inflasi" name="Inflasi_Persen" value="3.0" step="0.01" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="comp-suku-bunga">Suku Bunga (%)</label>
-                                <input type="number" id="comp-suku-bunga" name="Suku_Bunga_Persen" value="5.75" step="0.25" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="comp-pengangguran">Pengangguran (%)</label>
-                                <input type="number" id="comp-pengangguran" name="Pengangguran_Persen" value="5.0" step="0.01" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="comp-investasi">Investasi (Triliun)</label>
-                                <input type="number" id="comp-investasi" name="Investasi_Triliun" value="275" step="0.1" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="comp-ekspor">Ekspor (Miliar USD)</label>
-                                <input type="number" id="comp-ekspor" name="Ekspor_Miliar_USD" value="58" step="0.1" required>
-                            </div>
-                            <div class="form-group full-width">
-                                <label for="comp-konsumsi">Konsumsi RT (Triliun)</label>
-                                <input type="number" id="comp-konsumsi" name="Konsumsi_RT_Triliun" value="1950" step="0.1" required>
-                            </div>
+                            <div id="dynamic-compare-inputs" style="display: contents;"></div>
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary">
