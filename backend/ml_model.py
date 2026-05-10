@@ -84,13 +84,42 @@ class PredictiveModel:
                 self.df = pd.read_csv(dataset_path, sep=None, engine='python')
                 self.dataset_path = dataset_path
                 
-                # Pembersihan cerdas: Coba paksa konversi kolom objek ke numerik
+                # Pembersihan cerdas: Coba paksa konversi kolom objek ke numerik dengan mempertahankan desimal
+                def clean_number_string(val):
+                    if pd.isna(val):
+                        return val
+                    val = str(val).strip()
+                    # Menghapus spasi atau karakter mata uang seperti Rp, $, dll jika ada di awal/akhir
+                    val = ''.join(c for c in val if c.isdigit() or c in ['.', ',', '-'])
+                    
+                    if '.' in val and ',' in val:
+                        # Format 1.000,50 (Indonesia) atau 1,000.50 (US)
+                        if val.rfind(',') > val.rfind('.'):
+                            # Indonesia: titik sebagai ribuan, koma sebagai desimal
+                            val = val.replace('.', '').replace(',', '.')
+                        else:
+                            # US: koma sebagai ribuan, titik sebagai desimal
+                            val = val.replace(',', '')
+                    elif ',' in val:
+                        if val.count(',') == 1:
+                            parts = val.split(',')
+                            if len(parts[1]) == 3 and len(parts[0]) <= 3 and val.startswith('0') == False:
+                                # Bisa ribuan "1,000" atau desimal "1,000". Kita biarkan jadi desimal saja 
+                                # untuk amannya karena ini konteks Indonesia.
+                                val = val.replace(',', '.')
+                            else:
+                                val = val.replace(',', '.')
+                        else:
+                            # > 1 koma, pasti ribuan "1,000,000"
+                            val = val.replace(',', '')
+                            
+                    return val
+
                 for col in self.df.columns:
                     if self.df[col].dtype == 'object':
-                        # Coba bersihkan spasi dan hapus koma ribuan (contoh: "1,000.5" -> "1000.5")
-                        # Jika formatnya "1.000,5", akan butuh penyesuaian khusus, namun secara umum
-                        # kita coba `to_numeric` dengan coerce
-                        converted = pd.to_numeric(self.df[col].astype(str).str.replace(',', ''), errors='coerce')
+                        # Terapkan pembersihan format angka
+                        cleaned = self.df[col].apply(clean_number_string)
+                        converted = pd.to_numeric(cleaned, errors='coerce')
                         
                         # Jika sebagian besar (>50%) berhasil dikonversi menjadi angka, anggap ini kolom numerik
                         if converted.notna().sum() > len(self.df) * 0.5:
