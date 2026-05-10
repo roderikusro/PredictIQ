@@ -565,12 +565,10 @@ class PredictiveModel:
                 first_col = self.df.columns[0]
                 labels.append(str(self.df.iloc[i][first_col]))
 
-        # Gunakan beberapa fitur lain untuk grafik indikator (maksimal 3)
+        # Gunakan fitur-fitur untuk grafik indikator
         indicators = {}
         for col in self.feature_names:
             indicators[col] = self.df[col].tolist()
-            if len(indicators) >= 3:
-                break
 
         return {
             'labels': labels,
