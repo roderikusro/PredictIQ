@@ -625,12 +625,23 @@ function renderModelConfig(info) {
   ).join('');
 
   // Populate features
-  featuresContainer.innerHTML = info.columns.map(c => `
-    <label class="chip-checkbox" style="padding:6px 12px; font-size:0.85rem; border-radius:20px; background:var(--bg-card); border:1px solid var(--border); display:flex; align-items:center; cursor:pointer;">
-      <input type="checkbox" name="config-features" value="${c}" ${info.feature_names.includes(c) ? 'checked' : ''} style="margin-right:6px;">
-      ${c}
-    </label>
-  `).join('');
+  featuresContainer.innerHTML = '';
+  info.columns.map(c => {
+    const isChecked = info.feature_names.includes(c);
+    const label = document.createElement('label');
+    label.className = `chip-checkbox ${isChecked ? 'active' : ''}`;
+    label.innerHTML = `<input type="checkbox" name="config-features" value="${c}" ${isChecked ? 'checked' : ''}> ${c}`;
+    
+    const checkbox = label.querySelector('input');
+    checkbox.addEventListener('change', (e) => {
+      if (e.target.checked) {
+        label.classList.add('active');
+      } else {
+        label.classList.remove('active');
+      }
+    });
+    featuresContainer.appendChild(label);
+  });
 }
 
 document.getElementById('config-model-form')?.addEventListener('submit', async (e) => {
