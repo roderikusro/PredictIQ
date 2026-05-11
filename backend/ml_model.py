@@ -559,15 +559,16 @@ class PredictiveModel:
                     except:
                         label_parts.append(str(self.df.iloc[i][self.time_cols['year']]))
                 
+                if self.time_cols.get('date') and self.time_cols['date'] in self.df.columns:
+                    try:
+                        raw_date = self.df.iloc[i][self.time_cols['date']]
+                        parsed_date = pd.to_datetime(raw_date)
+                        label_parts.append(parsed_date.strftime('%d%m%Y'))
+                    except:
+                        label_parts.append(str(self.df.iloc[i][self.time_cols['date']]))
+                
                 if self.time_cols.get('month') and self.time_cols['month'] in self.df.columns:
                     label_parts.append(str(self.df.iloc[i][self.time_cols['month']]))
-                
-                if self.time_cols.get('day') and self.time_cols['day'] in self.df.columns:
-                    try:
-                        d = int(float(self.df.iloc[i][self.time_cols['day']]))
-                        label_parts.append(str(d))
-                    except:
-                        label_parts.append(str(self.df.iloc[i][self.time_cols['day']]))
                 
                 if self.time_cols.get('quarter') and self.time_cols['quarter'] in self.df.columns:
                     try:

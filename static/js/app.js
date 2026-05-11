@@ -194,10 +194,13 @@ function renderDynamicForms() {
   
   additionalTimeCols.forEach(t => {
     let label = t.replace(/_/g, ' ') + ' (Waktu)';
+    let inputType = (t === timeCols.date) ? 'text' : 'number';
+    let stepAttr = (t === timeCols.date) ? '' : 'step="any"';
+    
     inputsHtml += `
       <div class="form-group" style="background: rgba(139, 92, 246, 0.05); padding: 8px; border-radius: 6px; border-left: 2px solid #8b5cf6;">
-        <label style="color: #c4b5fd;">${label}</label>
-        <input type="number" name="${t}" value="0" step="any" required>
+        <label style="color: #c4b5fd;">${label} ${t === timeCols.date ? '(Cth: 2024-12-31)' : ''}</label>
+        <input type="${inputType}" name="${t}" ${stepAttr} required>
       </div>
     `;
   });
@@ -774,7 +777,7 @@ function renderModelConfig(info) {
   const timeYear = document.getElementById('config-time-year');
   const timeQuarter = document.getElementById('config-time-quarter');
   const timeMonth = document.getElementById('config-time-month');
-  const timeDay = document.getElementById('config-time-day');
+  const timeDate = document.getElementById('config-time-date');
   
   const populateTimeOptions = (selectElem, selectedVal) => {
     if (!selectElem) return;
@@ -787,7 +790,7 @@ function renderModelConfig(info) {
   populateTimeOptions(timeYear, tc.year);
   populateTimeOptions(timeQuarter, tc.quarter);
   populateTimeOptions(timeMonth, tc.month);
-  populateTimeOptions(timeDay, tc.day);
+  populateTimeOptions(timeDate, tc.date);
 }
 
 document.getElementById('config-model-form')?.addEventListener('submit', async (e) => {
@@ -801,7 +804,7 @@ document.getElementById('config-model-form')?.addEventListener('submit', async (
     year: document.getElementById('config-time-year')?.value || null,
     quarter: document.getElementById('config-time-quarter')?.value || null,
     month: document.getElementById('config-time-month')?.value || null,
-    day: document.getElementById('config-time-day')?.value || null
+    date: document.getElementById('config-time-date')?.value || null
   };
 
   if (features.length === 0) {
