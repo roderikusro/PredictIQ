@@ -774,6 +774,7 @@ function renderModelConfig(info) {
   const timeYear = document.getElementById('config-time-year');
   const timeQuarter = document.getElementById('config-time-quarter');
   const timeMonth = document.getElementById('config-time-month');
+  const timeDay = document.getElementById('config-time-day');
   
   const populateTimeOptions = (selectElem, selectedVal) => {
     if (!selectElem) return;
@@ -786,6 +787,7 @@ function renderModelConfig(info) {
   populateTimeOptions(timeYear, tc.year);
   populateTimeOptions(timeQuarter, tc.quarter);
   populateTimeOptions(timeMonth, tc.month);
+  populateTimeOptions(timeDay, tc.day);
 }
 
 document.getElementById('config-model-form')?.addEventListener('submit', async (e) => {
@@ -798,7 +800,8 @@ document.getElementById('config-model-form')?.addEventListener('submit', async (
   const time_cols = {
     year: document.getElementById('config-time-year')?.value || null,
     quarter: document.getElementById('config-time-quarter')?.value || null,
-    month: document.getElementById('config-time-month')?.value || null
+    month: document.getElementById('config-time-month')?.value || null,
+    day: document.getElementById('config-time-day')?.value || null
   };
 
   if (features.length === 0) {
