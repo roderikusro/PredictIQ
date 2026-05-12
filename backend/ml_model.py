@@ -105,19 +105,29 @@ class PredictiveModel:
                         if val.count(',') == 1:
                             parts = val.split(',')
                             if len(parts[1]) == 3 and len(parts[0]) <= 3 and val.startswith('0') == False:
-                                # Bisa ribuan "1,000" atau desimal "1,000". Kita biarkan jadi desimal saja 
-                                # untuk amannya karena ini konteks Indonesia.
                                 val = val.replace(',', '.')
                             else:
                                 val = val.replace(',', '.')
                         else:
                             # > 1 koma, pasti ribuan "1,000,000"
                             val = val.replace(',', '')
+                    elif '.' in val:
+                        if val.count('.') == 1:
+                            parts = val.split('.')
+                            if len(parts[1]) == 3 and len(parts[0]) <= 3 and val.startswith('0') == False:
+                                # Format 1.000 (Indonesia ribuan)
+                                val = val.replace('.', '')
+                            else:
+                                # Biarkan sebagai desimal
+                                pass
+                        else:
+                            # > 1 titik, pasti ribuan "1.000.000"
+                            val = val.replace('.', '')
                             
                     return val
 
                 for col in self.df.columns:
-                    if self.df[col].dtype == 'object':
+                    if self.df[col].dtype.name in ['object', 'string', 'str']:
                         # Terapkan pembersihan format angka
                         cleaned = self.df[col].apply(clean_number_string)
                         converted = pd.to_numeric(cleaned, errors='coerce')
