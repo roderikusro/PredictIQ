@@ -208,6 +208,30 @@ class PredictiveModel:
 
             self.is_trained = True
 
+            # Record default forward prediction to history
+            try:
+                forecast = self.get_forward_forecast()
+                if forecast and forecast.get('target_data'):
+                    for i in range(forecast['horizon']):
+                        input_data = {}
+                        for feat in self.feature_names:
+                            if feat in forecast['feature_data']:
+                                input_data[feat] = forecast['feature_data'][feat][i]
+                        
+                        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                        label = forecast['labels'][i] if i < len(forecast['labels']) else f"Prediksi +{i+1}"
+                        
+                        result_record = {
+                            'input': input_data,
+                            'prediction': forecast['target_data'][i],
+                            'unit': '% (Pertumbuhan GDP)',
+                            'timestamp': timestamp,
+                            'model': f"{forecast['model']} (Default Forecast - {label})"
+                        }
+                        self.prediction_history.append(result_record)
+            except Exception as e:
+                print(f"[WARNING] Gagal merekam default forecast ke history: {e}")
+
             return {
                 'linear_regression': self.lr_metrics,
                 'random_forest': self.rf_metrics
@@ -268,13 +292,50 @@ class PredictiveModel:
                 prediction = self.lr_model.predict(input_scaled)[0]
                 model_name = 'Linear Regression'
 
+            # --- Generate Single Prediction Insight ---
+            insight = ""
+            try:
+                if model_type == 'linear_regression':
+                    contributions = {}
+                    for i, feature in enumerate(self.feature_names):
+                        contributions[feature] = input_scaled[0][i] * self.lr_model.coef_[i]
+                    
+                    sorted_contributions = sorted(contributions.items(), key=lambda item: abs(item[1]), reverse=True)
+                    
+                    main_driver = None
+                    main_risk = None
+                    
+                    for feat, val in sorted_contributions:
+                        if val > 0 and main_driver is None:
+                            main_driver = feat
+                        elif val < 0 and main_risk is None:
+                            main_risk = feat
+                            
+                    direction = "naik (positif)" if prediction > 0 else "turun (negatif)"
+                    insight_text = f"Berdasarkan input, model memprediksi {self.target_name} cenderung {direction}."
+                    if main_driver:
+                        insight_text += f" Faktor pendorong utama ke arah ini adalah tingginya nilai pada {main_driver.replace('_', ' ')}."
+                    if main_risk:
+                        insight_text += f" Namun, angka ini sedikit tertahan oleh pengaruh negatif dari {main_risk.replace('_', ' ')}."
+                        
+                    insight = insight_text
+                else:
+                    importances = {name: imp for name, imp in zip(self.feature_names, self.rf_model.feature_importances_)}
+                    sorted_imp = sorted(importances.items(), key=lambda item: item[1], reverse=True)
+                    top_feature = sorted_imp[0][0]
+                    direction = "naik" if prediction > 0 else "turun"
+                    insight = f"Model memprediksi {self.target_name} akan {direction}. Faktor paling krusial yang menentukan pola prediksi ini adalah {top_feature.replace('_', ' ')}."
+            except Exception as e:
+                insight = "Tidak dapat menggenerasi narasi insight untuk model ini."
+
             result = {
                 'input': input_data,
                 'prediction': round(float(prediction), 4),
                 'unit': '% (Pertumbuhan GDP)',
                 'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                 'model': model_name,
-                'model_type': model_type
+                'model_type': model_type,
+                'insight': insight
             }
             self.prediction_history.append(result)
             return result
@@ -476,6 +537,376 @@ class PredictiveModel:
         """Mengembalikan riwayat prediksi."""
         return self.prediction_history
 
+    def _get_best_estimator(self):
+        """Mengambil estimator terbaik berdasarkan R2 score."""
+        lr_r2 = self.lr_metrics.get('r2_score', -999)
+        rf_r2 = self.rf_metrics.get('r2_score', -999)
+
+        if rf_r2 > lr_r2:
+            return 'random_forest', self.rf_model, self.rf_scaler, 'Random Forest', self.rf_metrics
+        return 'linear_regression', self.lr_model, self.lr_scaler, 'Linear Regression', self.lr_metrics
+
+    def _infer_time_columns(self):
+        """Inferensi kolom waktu dari konfigurasi atau nama kolom umum."""
+        if self.df is None:
+            return {}
+
+        inferred = {}
+        configured = self.time_cols or {}
+        for key in ['year', 'quarter', 'month', 'day']:
+            col = configured.get(key)
+            if col and col in self.df.columns:
+                inferred[key] = col
+
+        aliases = {
+            'year': ['tahun', 'year'],
+            'quarter': ['kuartal', 'quarter', 'triwulan'],
+            'month': ['bulan', 'month'],
+            'day': ['tanggal', 'hari', 'day']
+        }
+
+        for col in self.df.columns:
+            name = str(col).lower().replace('_', ' ').replace('-', ' ')
+            compact = name.replace(' ', '')
+            for key, keywords in aliases.items():
+                if key in inferred:
+                    continue
+                if any(keyword in name or keyword in compact for keyword in keywords):
+                    inferred[key] = col
+
+        return inferred
+
+    def _format_time_label(self, row, time_cols):
+        """Format label waktu yang ringkas untuk data aktual maupun prediksi."""
+        if not time_cols:
+            return None
+
+        def get_value(col):
+            try:
+                if hasattr(row, 'get'):
+                    return row.get(col)
+                return row[col]
+            except Exception:
+                return None
+
+        parts = []
+        year_col = time_cols.get('year')
+        month_col = time_cols.get('month')
+        quarter_col = time_cols.get('quarter')
+        day_col = time_cols.get('day')
+
+        if year_col:
+            value = get_value(year_col)
+            if value is not None and not pd.isna(value):
+                try:
+                    parts.append(str(int(float(value))))
+                except Exception:
+                    parts.append(str(value))
+
+        if month_col:
+            value = get_value(month_col)
+            if value is not None and not pd.isna(value):
+                try:
+                    parts.append(f"{int(float(value)):02d}")
+                except Exception:
+                    parts.append(str(value))
+
+        if day_col:
+            value = get_value(day_col)
+            if value is not None and not pd.isna(value):
+                try:
+                    parts.append(f"{int(float(value)):02d}")
+                except Exception:
+                    parts.append(str(value))
+
+        if quarter_col:
+            value = get_value(quarter_col)
+            if value is not None and not pd.isna(value):
+                try:
+                    parts.append(f"Q{int(float(value))}")
+                except Exception:
+                    parts.append(f"Q{value}")
+
+        return " ".join(parts) if parts else None
+
+    def _project_numeric_feature(self, col, horizon):
+        """
+        Proyeksi fitur numerik secara konservatif.
+        Slope historis terbaru diredam dan dibatasi guardrail data historis.
+        """
+        series = pd.to_numeric(self.df[col], errors='coerce').dropna()
+        if series.empty:
+            return [0.0 for _ in range(horizon)]
+
+        recent_window = min(len(series), max(5, horizon * 2))
+        recent = series.tail(recent_window).astype(float)
+        last_value = float(recent.iloc[-1])
+        slope = 0.0
+
+        if len(recent) >= 2:
+            try:
+                x = np.arange(len(recent))
+                slope = float(np.polyfit(x, recent.values, 1)[0])
+            except Exception:
+                slope = 0.0
+
+        q1 = float(series.quantile(0.25))
+        q3 = float(series.quantile(0.75))
+        iqr = q3 - q1
+        hist_min = float(series.min())
+        hist_max = float(series.max())
+        spread = hist_max - hist_min
+
+        if spread == 0:
+            lower_bound = hist_min
+            upper_bound = hist_max
+        elif iqr > 0:
+            lower_bound = max(hist_min - spread * 0.05, q1 - 1.5 * iqr)
+            upper_bound = min(hist_max + spread * 0.05, q3 + 1.5 * iqr)
+        else:
+            lower_bound = hist_min - spread * 0.05
+            upper_bound = hist_max + spread * 0.05
+
+        projected = []
+        damping = 0.55
+        for step in range(1, horizon + 1):
+            value = last_value + (slope * step * damping)
+            if upper_bound > lower_bound:
+                value = float(np.clip(value, lower_bound, upper_bound))
+            projected.append(round(float(value), 4))
+
+        return projected
+
+    def _project_future_time_values(self, horizon):
+        """Membangun nilai waktu berikutnya jika kolom waktu tersedia."""
+        time_cols = self._infer_time_columns()
+        if not time_cols:
+            return {}
+
+        future = {}
+        last_row = self.df.iloc[-1]
+
+        def safe_int(col, default=0):
+            try:
+                return int(float(last_row[col]))
+            except Exception:
+                return default
+
+        year_col = time_cols.get('year')
+        quarter_col = time_cols.get('quarter')
+        month_col = time_cols.get('month')
+        day_col = time_cols.get('day')
+
+        if year_col and quarter_col:
+            last_year = safe_int(year_col)
+            last_quarter = max(1, min(4, safe_int(quarter_col, 1)))
+            years = []
+            quarters = []
+            for i in range(1, horizon + 1):
+                quarter_index = last_quarter + i
+                years.append(last_year + ((quarter_index - 1) // 4))
+                quarters.append(((quarter_index - 1) % 4) + 1)
+            future[year_col] = years
+            future[quarter_col] = quarters
+            return future
+
+        if year_col and month_col:
+            last_year = safe_int(year_col)
+            last_month = max(1, min(12, safe_int(month_col, 1)))
+            years = []
+            months = []
+            for i in range(1, horizon + 1):
+                month_index = (last_year * 12 + last_month - 1) + i
+                years.append(month_index // 12)
+                months.append((month_index % 12) + 1)
+            future[year_col] = years
+            future[month_col] = months
+            return future
+
+        if year_col:
+            year_values = pd.to_numeric(self.df[year_col], errors='coerce').dropna().drop_duplicates()
+            diffs = year_values.diff().dropna()
+            step = int(round(diffs.median())) if not diffs.empty and diffs.median() > 0 else 1
+            last_year = safe_int(year_col)
+            future[year_col] = [last_year + (step * i) for i in range(1, horizon + 1)]
+
+        if quarter_col and quarter_col not in future:
+            last_quarter = max(1, min(4, safe_int(quarter_col, 1)))
+            future[quarter_col] = [((last_quarter + i - 1) % 4) + 1 for i in range(1, horizon + 1)]
+
+        if month_col and month_col not in future:
+            last_month = max(1, min(12, safe_int(month_col, 1)))
+            future[month_col] = [((last_month + i - 1) % 12) + 1 for i in range(1, horizon + 1)]
+
+        if day_col and day_col not in future:
+            day_values = pd.to_numeric(self.df[day_col], errors='coerce').dropna()
+            diffs = day_values.diff().dropna()
+            step = int(round(diffs.median())) if not diffs.empty and diffs.median() > 0 else 1
+            last_day = safe_int(day_col, 1)
+            future[day_col] = [last_day + (step * i) for i in range(1, horizon + 1)]
+
+        return future
+
+    def _target_guardrails(self):
+        """Batas aman target agar forecast tidak keluar terlalu jauh dari pola data."""
+        target = pd.to_numeric(self.df[self.target_name], errors='coerce').dropna()
+        if target.empty:
+            return None
+
+        q1 = float(target.quantile(0.25))
+        q3 = float(target.quantile(0.75))
+        iqr = q3 - q1
+        hist_min = float(target.min())
+        hist_max = float(target.max())
+        spread = hist_max - hist_min
+
+        if spread == 0:
+            return hist_min, hist_max
+        if iqr > 0:
+            allowed_move = max(1.5 * iqr, spread * 0.25)
+            return max(hist_min, q1 - allowed_move), min(hist_max, q3 + allowed_move)
+        return hist_min - spread * 0.10, hist_max + spread * 0.10
+
+    def _forecast_reliability(self, metrics, horizon):
+        """Ringkasan keandalan forecast berbasis performa model dan panjang horizon."""
+        target = pd.to_numeric(self.df[self.target_name], errors='coerce').dropna()
+        target_range = float(target.max() - target.min()) if len(target) else 0.0
+        mae = float(metrics.get('mae', 0) or 0)
+        r2 = float(metrics.get('r2_score', 0) or 0)
+        relative_mae = mae / target_range if target_range > 0 else None
+
+        if r2 >= 0.75 and (relative_mae is None or relative_mae <= 0.20) and horizon <= 6:
+            level = 'tinggi'
+        elif (
+            (r2 >= 0.45 and (relative_mae is None or relative_mae <= 0.35))
+            or (relative_mae is not None and relative_mae <= 0.12 and horizon <= 4)
+        ):
+            level = 'sedang'
+        else:
+            level = 'perlu kehati-hatian'
+
+        return {
+            'level': level,
+            'r2_score': round(r2, 4),
+            'mae': round(mae, 4),
+            'relative_mae': round(relative_mae, 4) if relative_mae is not None else None
+        }
+
+    def get_forward_forecast(self, horizon=None):
+        """
+        Membuat prediksi otomatis beberapa step ke depan.
+        Horizon default dibuat pendek agar hasil tetap lebih dapat diandalkan.
+        """
+        if not self.is_trained or self.df is None or len(self.df) == 0:
+            return None
+
+        if horizon is None:
+            horizon = max(1, min(6, int(math.ceil(len(self.df) * 0.10))))
+        horizon = max(1, min(6, int(horizon)))
+
+        _, estimator, scaler, model_name, metrics = self._get_best_estimator()
+        if estimator is None:
+            return None
+
+        feature_data = {
+            feature: self._project_numeric_feature(feature, horizon)
+            for feature in self.feature_names
+        }
+
+        future_time_values = self._project_future_time_values(horizon)
+        for col, values in future_time_values.items():
+            if col in feature_data:
+                feature_data[col] = [round(float(v), 4) for v in values]
+
+        target_bounds = self._target_guardrails()
+        target_projection = self._project_numeric_feature(self.target_name, horizon)
+        predictions = []
+        model_predictions = []
+        lower_bound = []
+        upper_bound = []
+        mae = float(metrics.get('mae', 0) or 0)
+        reliability_preview = self._forecast_reliability(metrics, horizon)
+        relative_mae = reliability_preview.get('relative_mae')
+        r2_score = float(metrics.get('r2_score', 0) or 0)
+
+        if r2_score >= 0.70:
+            model_weight = 0.75
+        elif r2_score >= 0.30:
+            model_weight = 0.55
+        elif r2_score >= 0 and relative_mae is not None and relative_mae <= 0.12:
+            model_weight = 0.35
+        elif relative_mae is not None and relative_mae <= 0.12:
+            model_weight = 0.05
+        else:
+            model_weight = 0.05
+
+        for i in range(horizon):
+            input_values = [feature_data[feature][i] for feature in self.feature_names]
+            input_array = np.array(input_values).reshape(1, -1)
+            input_scaled = scaler.transform(input_array)
+            model_prediction = float(estimator.predict(input_scaled)[0])
+            baseline_prediction = float(target_projection[i])
+            prediction = (model_prediction * model_weight) + (baseline_prediction * (1 - model_weight))
+
+            if target_bounds:
+                prediction = float(np.clip(prediction, target_bounds[0], target_bounds[1]))
+
+            model_predictions.append(round(model_prediction, 4))
+            predictions.append(round(prediction, 4))
+            lower_bound.append(round(prediction - mae, 4))
+            upper_bound.append(round(prediction + mae, 4))
+
+        time_cols = self._infer_time_columns()
+        labels = []
+        for i in range(horizon):
+            row = {}
+            for feature, values in feature_data.items():
+                row[feature] = values[i]
+            for col, values in future_time_values.items():
+                row[col] = values[i]
+            labels.append(self._format_time_label(row, time_cols) or f"Prediksi +{i + 1}")
+
+        target_values = pd.to_numeric(self.df[self.target_name], errors='coerce').dropna()
+        last_actual = float(target_values.iloc[-1]) if not target_values.empty else None
+        last_prediction = predictions[-1] if predictions else None
+        reliability = self._forecast_reliability(metrics, horizon)
+
+        if last_actual is not None and last_prediction is not None:
+            target_std = float(target_values.std()) if len(target_values) > 1 else 0.0
+            stable_threshold = max(mae, target_std * 0.10, 0.01)
+            delta = last_prediction - last_actual
+            if abs(delta) <= stable_threshold:
+                direction = 'relatif stabil'
+            elif delta > 0:
+                direction = 'naik'
+            else:
+                direction = 'turun'
+            insight = (
+                f"Forecast otomatis dibatasi {horizon} step ke depan memakai {model_name}. "
+                f"Proyeksi {self.target_name} cenderung {direction} dari {round(last_actual, 4)} "
+                f"ke {round(last_prediction, 4)} dengan toleransi MAE sekitar {round(mae, 4)}. "
+                f"Tingkat keandalan: {reliability['level']}."
+            )
+        else:
+            insight = f"Forecast otomatis dibatasi {horizon} step ke depan memakai {model_name}."
+
+        return {
+            'horizon': horizon,
+            'labels': labels,
+            'target_name': self.target_name,
+            'target_data': predictions,
+            'baseline_data': target_projection,
+            'model_data': model_predictions,
+            'lower_bound': lower_bound,
+            'upper_bound': upper_bound,
+            'feature_data': feature_data,
+            'model': model_name,
+            'method': f'Blended forecast: {round(model_weight * 100)}% model terbaik dan {round((1 - model_weight) * 100)}% tren historis konservatif',
+            'reliability': reliability,
+            'insight': insight,
+            'is_default': True
+        }
+
     def get_dataset_info(self):
         """
         Mengembalikan informasi dataset untuk ditampilkan di frontend.
@@ -559,40 +990,12 @@ class PredictiveModel:
             return None
 
         labels = []
-        has_time_config = self.time_cols and any(self.time_cols.values())
+        time_cols = self._infer_time_columns()
         
         for i in range(len(self.df)):
-            if has_time_config:
-                label_parts = []
-                if self.time_cols.get('year') and self.time_cols['year'] in self.df.columns:
-                    # Coba format sebagai int untuk menghilangkan .0 jika tahun berbentuk float
-                    try:
-                        yr = int(float(self.df.iloc[i][self.time_cols['year']]))
-                        label_parts.append(str(yr))
-                    except:
-                        label_parts.append(str(self.df.iloc[i][self.time_cols['year']]))
-                
-                if self.time_cols.get('day') and self.time_cols['day'] in self.df.columns:
-                    try:
-                        d = int(float(self.df.iloc[i][self.time_cols['day']]))
-                        label_parts.append(f"{d:02d}")
-                    except:
-                        label_parts.append(str(self.df.iloc[i][self.time_cols['day']]))
-                
-                if self.time_cols.get('month') and self.time_cols['month'] in self.df.columns:
-                    label_parts.append(str(self.df.iloc[i][self.time_cols['month']]))
-                
-                if self.time_cols.get('quarter') and self.time_cols['quarter'] in self.df.columns:
-                    try:
-                        q = int(float(self.df.iloc[i][self.time_cols['quarter']]))
-                        label_parts.append(f"Q{q}")
-                    except:
-                        label_parts.append(f"Q{self.df.iloc[i][self.time_cols['quarter']]}")
-                
-                if label_parts:
-                    labels.append(" ".join(label_parts))
-                else:
-                    labels.append(str(self.df.iloc[i][self.df.columns[0]]))
+            label = self._format_time_label(self.df.iloc[i], time_cols)
+            if label:
+                labels.append(label)
             else:
                 # Gunakan kolom pertama sebagai default jika tidak ada konfigurasi
                 first_col = self.df.columns[0]
@@ -603,12 +1006,34 @@ class PredictiveModel:
         for col in self.feature_names:
             indicators[col] = self.df[col].tolist()
 
-        return {
+        target_data = [
+            None if pd.isna(v) else round(float(v), 4)
+            for v in self.df[self.target_name].tolist()
+        ]
+        forecast = self.get_forward_forecast()
+        result = {
             'labels': labels,
             'target_name': self.target_name,
-            'target_data': self.df[self.target_name].tolist(),
+            'target_data': target_data,
             'indicators': indicators
         }
+
+        if forecast:
+            horizon = forecast['horizon']
+            combined_labels = labels + forecast['labels']
+            if target_data:
+                forecast_series = [None] * (len(target_data) - 1) + [target_data[-1]] + forecast['target_data']
+            else:
+                forecast_series = forecast['target_data']
+
+            result.update({
+                'forecast': forecast,
+                'combined_labels': combined_labels,
+                'actual_series': target_data + [None] * horizon,
+                'forecast_series': forecast_series
+            })
+
+        return result
 
     def clear_history(self):
         """Menghapus riwayat prediksi."""
@@ -699,6 +1124,9 @@ class PredictiveModel:
         # 6. Scatter data preparation (sampling to avoid large payload if dataset is huge, but here it's 40 rows)
         # We can just pass the dataframe records
         scatter_data = df_eda.replace({np.nan: None}).to_dict(orient='records')
+        forecast = self.get_forward_forecast()
+        if forecast and forecast.get('insight'):
+            insights.append(forecast['insight'])
 
         return {
             'descriptive': desc,
@@ -709,6 +1137,7 @@ class PredictiveModel:
             'insights': insights,
             'scatter_data': scatter_data,
             'columns': list(df_eda.columns),
-            'numeric_columns': df_eda.select_dtypes(include=[np.number]).columns.tolist()
+            'numeric_columns': df_eda.select_dtypes(include=[np.number]).columns.tolist(),
+            'target': self.target_name,
+            'forecast': forecast
         }
-

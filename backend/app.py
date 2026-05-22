@@ -16,6 +16,7 @@
   - POST /api/upload-csv          -> Upload dataset CSV baru
   - GET  /api/export              -> Export riwayat prediksi
   - POST /api/clear-history       -> Hapus riwayat prediksi
+  - GET  /api/infographic-data    -> Data lengkap untuk infografis
 =============================================================
 """
 
@@ -462,6 +463,148 @@ def api_export():
                     'Content-Disposition': f'attachment; filename=prediksi_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
                 }
             )
+
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/infographic-data', methods=['GET'])
+def api_infographic_data():
+    """
+    Mengembalikan data lengkap untuk halaman Infografis Otomatis.
+    Menggabungkan dashboard, EDA, model comparison, dan trend menjadi satu payload.
+    """
+    try:
+        if not model.is_trained:
+            return jsonify({'status': 'error', 'message': 'Model belum dilatih'}), 404
+
+        # --- 1. Dataset Overview ---
+        dataset_info = model.get_dataset_info()
+        overview = {
+            'rows': dataset_info['shape']['rows'] if dataset_info else 0,
+            'cols': dataset_info['shape']['cols'] if dataset_info else 0,
+            'features': model.feature_names,
+            'target': model.target_name,
+        }
+
+        # --- 2. Model Metrics (Best Model) ---
+        metrics = model.get_metrics()
+
+        # --- 3. EDA Highlights ---
+        eda_data = model.get_eda()
+        eda_highlights = {}
+        if eda_data:
+            eda_highlights['insights'] = eda_data.get('insights', [])
+            eda_highlights['outliers'] = eda_data.get('outliers', {})
+            eda_highlights['skewness'] = eda_data.get('skewness', {})
+            eda_highlights['forecast'] = eda_data.get('forecast')
+            # Top 3 correlations with target
+            if model.target_name in eda_data.get('correlation', {}):
+                target_corr = eda_data['correlation'][model.target_name]
+                sorted_corr = sorted(
+                    [(k, v) for k, v in target_corr.items() if k != model.target_name and v is not None],
+                    key=lambda x: abs(x[1]), reverse=True
+                )
+                eda_highlights['top_correlations'] = [
+                    {'feature': k, 'correlation': v} for k, v in sorted_corr[:5]
+                ]
+            # Descriptive stats summary (for each feature: mean, min, max)
+            desc_summary = []
+            for col in model.feature_names:
+                desc = eda_data.get('descriptive', {}).get(col, {})
+                if desc:
+                    desc_summary.append({
+                        'feature': col,
+                        'mean': round(desc.get('mean', 0), 2) if desc.get('mean') is not None else None,
+                        'min': round(desc.get('min', 0), 2) if desc.get('min') is not None else None,
+                        'max': round(desc.get('max', 0), 2) if desc.get('max') is not None else None,
+                        'std': round(desc.get('std', 0), 2) if desc.get('std') is not None else None
+                    })
+            eda_highlights['descriptive_summary'] = desc_summary
+            eda_highlights['scatter_data'] = eda_data.get('scatter_data', [])
+
+        # --- 4. Model Comparison ---
+        comparison = model.get_comparison_metrics()
+        comparison_summary = {}
+        if comparison:
+            comparison_summary = {
+                'best_model': comparison['best_model'],
+                'lr_metrics': comparison['linear_regression']['metrics'],
+                'rf_metrics': comparison['random_forest']['metrics'],
+                'summary': comparison['summary'],
+            }
+            # Include feature importance from RF
+            if 'feature_importance' in comparison.get('random_forest', {}):
+                comparison_summary['feature_importance'] = comparison['random_forest']['feature_importance']
+
+        # --- 5. Trend Data (for sparkline/mini chart) ---
+        trend = model.get_trend_data()
+        trend_summary = {}
+        if trend:
+            target_data = trend.get('target_data', [])
+            forecast = trend.get('forecast')
+            trend_summary = {
+                'labels': trend.get('labels', []),
+                'target_data': target_data,
+                'target_name': trend.get('target_name', ''),
+                'latest_value': target_data[-1] if target_data else None,
+                'avg_value': round(sum(target_data) / len(target_data), 2) if target_data else None,
+                'min_value': round(min(target_data), 2) if target_data else None,
+                'max_value': round(max(target_data), 2) if target_data else None,
+                'forecast': forecast,
+                'forecast_labels': forecast.get('labels', []) if forecast else [],
+                'forecast_data': forecast.get('target_data', []) if forecast else [],
+                'forecast_latest': forecast.get('target_data', [None])[-1] if forecast and forecast.get('target_data') else None,
+                'forecast_insight': forecast.get('insight') if forecast else None,
+            }
+
+        # --- 6. Auto-generated narrative paragraphs ---
+        narratives = []
+        # Narrative 1: Dataset overview
+        narratives.append(f"Dataset berisi {overview['rows']} baris data dan {overview['cols']} kolom. Target prediksi adalah '{model.target_name}' dengan {len(model.feature_names)} fitur pendukung.")
+        # Narrative 2: Model performance
+        if metrics:
+            r2 = metrics.get('r2_score', 0)
+            model_name = metrics.get('model_name', 'Model')
+            if r2 > 0.9:
+                perf = 'sangat baik'
+            elif r2 > 0.7:
+                perf = 'baik'
+            elif r2 > 0.5:
+                perf = 'cukup'
+            else:
+                perf = 'perlu ditingkatkan'
+            narratives.append(f"Model terbaik ({model_name}) menunjukkan performa {perf} dengan R² Score {r2}, MAE {metrics.get('mae', '-')}, dan RMSE {metrics.get('rmse', '-')}.")
+        # Narrative 3: Trend insight
+        if trend_summary.get('target_data') and len(trend_summary['target_data']) >= 2:
+            last = trend_summary['target_data'][-1]
+            prev = trend_summary['target_data'][-2]
+            if last > prev:
+                narratives.append(f"Tren terbaru menunjukkan kenaikan {model.target_name} dari {round(prev,2)} ke {round(last,2)}.")
+            elif last < prev:
+                narratives.append(f"Tren terbaru menunjukkan penurunan {model.target_name} dari {round(prev,2)} ke {round(last,2)}.")
+            else:
+                narratives.append(f"{model.target_name} stabil di angka {round(last,2)}.")
+        if trend_summary.get('forecast_insight'):
+            narratives.append(trend_summary['forecast_insight'])
+        # Narrative 4: Key features
+        if comparison_summary.get('feature_importance'):
+            sorted_fi = sorted(comparison_summary['feature_importance'].items(), key=lambda x: x[1], reverse=True)
+            top_features = [f[0] for f in sorted_fi[:3]]
+            narratives.append(f"Fitur yang paling berpengaruh terhadap prediksi: {', '.join(top_features)}.")
+
+        return jsonify({
+            'status': 'success',
+            'data': {
+                'overview': overview,
+                'metrics': metrics,
+                'eda_highlights': eda_highlights,
+                'comparison': comparison_summary,
+                'trend': trend_summary,
+                'narratives': narratives,
+                'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            }
+        })
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500

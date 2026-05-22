@@ -14,11 +14,14 @@
     <!-- Chart.js CDN -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
+    <!-- html2canvas CDN untuk Export ke Image -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/css/style.css?v=1.1">
+    <link rel="stylesheet" href="/static/css/style.css?v=2.1">
 </head>
 <body>
 
@@ -76,6 +79,12 @@
                         <span>Dataset Viewer</span>
                     </a>
                 </li>
+                <li>
+                    <a href="#" class="nav-link" data-page="infografis" id="nav-infografis">
+                        <i data-lucide="image"></i>
+                        <span>Infografis</span>
+                    </a>
+                </li>
             </ul>
         </nav>
 
@@ -131,7 +140,7 @@
                         <i data-lucide="target"></i>
                     </div>
                     <div class="stat-info">
-                        <span class="stat-label">R² Score</span>
+                        <span class="stat-label">RÂ² Score</span>
                         <span class="stat-value" id="val-r2">—</span>
                     </div>
                     <div class="stat-trend up">
@@ -181,10 +190,16 @@
 
             <!-- Charts Row -->
             <div class="charts-grid">
-                <div class="chart-card wide">
+                <div class="chart-card wide" id="dashboard-trend-card">
                     <div class="chart-header">
-                        <h3>Tren Pertumbuhan GDP (%)</h3>
+                        <div>
+                            <h3>Tren Aktual & Prediksi Otomatis</h3>
+                            <span id="forecast-summary" class="forecast-summary" style="display:none;"></span>
+                        </div>
                         <div class="chart-actions">
+                            <button class="btn-icon" id="btn-export-trend" title="Export PNG" onclick="exportToImage('dashboard-trend-card', 'Grafik_Tren_GDP')">
+                                <i data-lucide="image"></i>
+                            </button>
                             <button class="btn-icon" id="btn-refresh-trend" title="Refresh">
                                 <i data-lucide="refresh-cw"></i>
                             </button>
@@ -277,7 +292,7 @@
                 <!-- Feature Distribution -->
                 <div class="chart-card">
                     <div class="chart-header" style="display:flex; justify-content:space-between; align-items:center;">
-                        <h3>Distribusi Data</h3>
+                        <h3>Distribusi Aktual & Prediksi</h3>
                         <select id="eda-dist-select" class="model-selector" style="padding:4px 8px; font-size:0.8rem;">
                             <!-- Options populated by JS -->
                         </select>
@@ -396,8 +411,11 @@
                 <!-- Hasil Prediksi -->
                 <div class="predict-result-area">
                     <div class="card result-card" id="result-card" style="display:none;">
-                        <div class="card-header">
+                        <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
                             <h3><i data-lucide="zap"></i> Hasil Prediksi</h3>
+                            <button class="btn btn-sm btn-ghost" id="btn-export-result" title="Export PNG" onclick="exportToImage('result-card', 'Hasil_Prediksi_PredictIQ')">
+                                <i data-lucide="image"></i> Export
+                            </button>
                         </div>
                         <div class="card-body">
                             <div class="result-display">
@@ -429,6 +447,18 @@
                                     <span>Tinggi</span>
                                 </div>
                             </div>
+                            
+                            <!-- Wadah untuk Narasi Insight -->
+                            <div class="insight-container" id="prediction-insight" style="margin-top: 20px; padding: 16px; background: rgba(139, 92, 246, 0.08); border-left: 3px solid #8b5cf6; border-radius: 6px; display: none;">
+                                <div style="display: flex; gap: 10px; align-items: flex-start;">
+                                    <i data-lucide="lightbulb" style="color: #f59e0b; width: 20px; height: 20px; flex-shrink: 0; margin-top: 2px;"></i>
+                                    <div>
+                                        <h4 style="margin: 0 0 6px 0; font-size: 0.9rem; color: #e2e8f0;">Auto-Insight</h4>
+                                        <p id="insight-text" style="margin: 0; font-size: 0.85rem; color: #94a3b8; line-height: 1.5;"></p>
+                                    </div>
+                                </div>
+                            </div>
+                            
                         </div>
                     </div>
 
@@ -563,7 +593,7 @@
                             </div>
                             <div class="metric-row">
                                 <div class="metric-label">
-                                    <strong>R² Score</strong>
+                                    <strong>RÂ² Score</strong>
                                     <span>Koefisien Determinasi — Seberapa baik model menjelaskan data</span>
                                 </div>
                                 <div class="metric-bar-wrap">
@@ -615,9 +645,9 @@
                         
                         <h4>Rumus Model</h4>
                         <div class="formula">
-                            ŷ = β₀ + β₁x₁ + β₂x₂ + ... + βₙxₙ
+                            Å· = Î²â‚€ + Î²â‚xâ‚ + Î²â‚‚xâ‚‚ + ... + Î²â‚™xâ‚™
                         </div>
-                        <p>Di mana <strong>ŷ</strong> adalah prediksi, <strong>β₀</strong> adalah intercept, dan <strong>β₁...βₙ</strong> adalah koefisien untuk setiap fitur.</p>
+                        <p>Di mana <strong>Å·</strong> adalah prediksi, <strong>Î²â‚€</strong> adalah intercept, dan <strong>Î²â‚...Î²â‚™</strong> adalah koefisien untuk setiap fitur.</p>
 
                         <h4>Kelebihan</h4>
                         <ul>
@@ -641,7 +671,7 @@
                         
                         <h4>Cara Kerja</h4>
                         <div class="formula">
-                            ŷ = (1/N) × Σ tree_i(x)   untuk i = 1...N
+                            Å· = (1/N) Ã— Î£ tree_i(x)   untuk i = 1...N
                         </div>
                         <p>Di mana <strong>N</strong> adalah jumlah tree (100 dalam model ini), dan <strong>tree_i(x)</strong> adalah prediksi dari tree ke-i.</p>
 
@@ -674,7 +704,7 @@
                         <ul>
                             <li><strong>MAE (Mean Absolute Error):</strong> Rata-rata selisih absolut antara prediksi dan aktual. Semakin kecil semakin baik.</li>
                             <li><strong>RMSE (Root Mean Squared Error):</strong> Akar kuadrat dari rata-rata kuadrat kesalahan. Lebih sensitif terhadap outlier.</li>
-                            <li><strong>R² Score:</strong> Proporsi variansi data yang bisa dijelaskan oleh model. Nilai 1.0 = sempurna, nilai negatif = lebih buruk dari rata-rata.</li>
+                            <li><strong>RÂ² Score:</strong> Proporsi variansi data yang bisa dijelaskan oleh model. Nilai 1.0 = sempurna, nilai negatif = lebih buruk dari rata-rata.</li>
                         </ul>
 
                         <h4>Fitur yang Digunakan</h4>
@@ -686,7 +716,7 @@
                         <p>Fitur <strong>Perbandingan Model</strong> di aplikasi ini dirancang untuk mengevaluasi dan membandingkan performa dari Linear Regression dan Random Forest secara berdampingan. Hal ini dilakukan karena tidak ada algoritma machine learning tunggal yang cocok untuk semua jenis data (<em>No Free Lunch Theorem</em>).</p>
                         <ul>
                             <li><strong>Testing Simultan:</strong> Saat dataset diperbarui, sistem akan melatih ulang (<em>retrain</em>) kedua model secara bersamaan menggunakan dataset yang sama (dengan <em>train-test split</em> 80:20).</li>
-                            <li><strong>Penentuan Best Model:</strong> Sistem secara otomatis mengevaluasi metrik MAE, RMSE, dan R² Score dari kedua model pada set pengujian. Model dengan nilai <strong>R² Score tertinggi</strong> dinobatkan sebagai "Best Model".</li>
+                            <li><strong>Penentuan Best Model:</strong> Sistem secara otomatis mengevaluasi metrik MAE, RMSE, dan RÂ² Score dari kedua model pada set pengujian. Model dengan nilai <strong>RÂ² Score tertinggi</strong> dinobatkan sebagai "Best Model".</li>
                             <li><strong>Dual Prediction:</strong> Pada halaman prediksi perbandingan, input pengguna akan dimasukkan ke dalam kedua model. Hasil dari "Best Model" akan disorot sebagai rekomendasi utama, memberikan perspektif hasil dari dua pendekatan yang berbeda (linear vs non-linear).</li>
                         </ul>
                     </div>
@@ -885,7 +915,7 @@
                                 <span class="comp-metric-value" id="comp-lr-rmse">—</span>
                             </div>
                             <div class="comp-metric-item">
-                                <span class="comp-metric-label">R² Score</span>
+                                <span class="comp-metric-label">RÂ² Score</span>
                                 <span class="comp-metric-value" id="comp-lr-r2">—</span>
                             </div>
                         </div>
@@ -913,7 +943,7 @@
                                 <span class="comp-metric-value" id="comp-rf-rmse">—</span>
                             </div>
                             <div class="comp-metric-item">
-                                <span class="comp-metric-label">R² Score</span>
+                                <span class="comp-metric-label">RÂ² Score</span>
                                 <span class="comp-metric-value" id="comp-rf-r2">—</span>
                             </div>
                         </div>
@@ -1004,6 +1034,262 @@
             </div>
         </section>
 
+        <!-- ========== PAGE: INFOGRAFIS OTOMATIS ========== -->
+        <section class="page" id="page-infografis">
+            <div class="page-header">
+                <div>
+                    <h2>Infografis Otomatis</h2>
+                    <p class="page-subtitle">Ringkasan analisis visual siap ekspor untuk kebutuhan infografis</p>
+                </div>
+                <div class="header-actions" style="display:flex; gap:10px;">
+                    <button class="btn btn-primary" id="btn-export-infographic" onclick="exportToImage('infographic-canvas', 'Infografis_Analisis_PredictIQ')">
+                        <i data-lucide="image"></i>
+                        <span>Export PNG</span>
+                    </button>
+                    <button class="btn btn-ghost" onclick="loadInfographic()">
+                        <i data-lucide="refresh-cw"></i>
+                        <span>Refresh</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ========== CUSTOMIZATION TOOLBAR ========== -->
+            <div class="infog-toolbar" id="infog-toolbar">
+                <div class="infog-toolbar-group">
+                    <label class="infog-toolbar-label"><i data-lucide="palette"></i> Background</label>
+                    <input type="color" id="infog-color-bg" class="infog-color-custom" value="#0d1225" title="Warna Latar Belakang">
+                </div>
+                <div class="infog-toolbar-group">
+                    <label class="infog-toolbar-label"><i data-lucide="layout"></i> Shape / Card</label>
+                    <input type="color" id="infog-color-shape" class="infog-color-custom" value="#1e293b" title="Warna Bentuk/Kartu">
+                </div>
+                <div class="infog-toolbar-group">
+                    <label class="infog-toolbar-label"><i data-lucide="bar-chart-2"></i> Chart / Aksen</label>
+                    <input type="color" id="infog-color-chart" class="infog-color-custom" value="#8b5cf6" title="Warna Grafik & Aksen">
+                </div>
+                <div class="infog-toolbar-group">
+                    <label class="infog-toolbar-label"><i data-lucide="type"></i> Text</label>
+                    <input type="color" id="infog-color-text" class="infog-color-custom" value="#f8fafc" title="Warna Teks Utama">
+                </div>
+                
+                <div class="infog-toolbar-separator"></div>
+                
+                <div class="infog-toolbar-group">
+                    <label class="infog-toolbar-label"><i data-lucide="layout"></i> Desain</label>
+                    <div class="infog-layout-toggle" id="infog-layout-toggle">
+                        <button class="infog-layout-btn active" data-layout="1" title="Executive Summary">1</button>
+                        <button class="infog-layout-btn" data-layout="2" title="Business Insight">2</button>
+                        <button class="infog-layout-btn" data-layout="3" title="Technical Analysis">3</button>
+                    </div>
+                </div>
+                
+                <div class="infog-toolbar-group" style="margin-left: auto;">
+                    <button class="infog-theme-btn active" id="infog-btn-preset-dark" style="background: rgba(139,92,246,0.2); color: #c4b5fd;"><i data-lucide="moon"></i> Preset Dark</button>
+                    <button class="infog-theme-btn" id="infog-btn-preset-light" style="background: rgba(255,255,255,0.8); color: #0f172a;"><i data-lucide="sun"></i> Preset Light</button>
+                </div>
+            </div>
+
+            <!-- ========== INFOGRAPHIC CANVAS ========== -->
+            <div id="infographic-canvas" class="infographic-canvas">
+
+                <!-- Header Banner -->
+                <div class="infog-header">
+                    <div class="infog-header-bg"></div>
+                    <div class="infog-header-content">
+                        <div class="infog-logo-area">
+                            <div class="infog-logo-icon"><i data-lucide="brain-circuit"></i></div>
+                            <div>
+                                <h1 id="infog-title" contenteditable="true" spellcheck="false">Laporan Analisis Statistik Prediktif</h1>
+                                <p id="infog-subtitle" contenteditable="true" spellcheck="false">Sistem Prediktif Berbasis Machine Learning</p>
+                            </div>
+                        </div>
+                        <div class="infog-meta">
+                            <span id="infog-date"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- LAYOUT 1: Executive Summary -->
+                <div id="infog-layout-1" class="infog-layout active">
+                    <!-- Stats Row: 4 cards ~140px -->
+                    <div class="infog-section infog-section-compact">
+                        <h2 class="infog-section-title"><i data-lucide="database"></i> Ringkasan Dataset</h2>
+                        <div class="infog-stats-row">
+                            <div class="infog-stat-card">
+                                <div class="infog-stat-icon purple"><i data-lucide="rows-3"></i></div>
+                                <div class="infog-stat-value" id="infog-rows">—</div>
+                                <div class="infog-stat-label">Total Baris</div>
+                            </div>
+                            <div class="infog-stat-card">
+                                <div class="infog-stat-icon blue"><i data-lucide="columns-3"></i></div>
+                                <div class="infog-stat-value" id="infog-cols">—</div>
+                                <div class="infog-stat-label">Total Kolom</div>
+                            </div>
+                            <div class="infog-stat-card">
+                                <div class="infog-stat-icon teal"><i data-lucide="layers"></i></div>
+                                <div class="infog-stat-value" id="infog-features">—</div>
+                                <div class="infog-stat-label">Jumlah Fitur</div>
+                            </div>
+                            <div class="infog-stat-card">
+                                <div class="infog-stat-icon orange"><i data-lucide="crosshair"></i></div>
+                                <div class="infog-stat-value small" id="infog-target">—</div>
+                                <div class="infog-stat-label">Target Prediksi</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Trend Chart: ~340px (stats 80 + chart 220 + padding) -->
+                    <div class="infog-section infog-section-compact">
+                        <h2 class="infog-section-title"><i data-lucide="trending-up"></i> Tren <span id="infog-trend-label">Target</span></h2>
+                        <div class="infog-trend-stats">
+                            <div class="infog-trend-stat">
+                                <span class="infog-trend-stat-val" id="infog-trend-latest">—</span>
+                                <span class="infog-trend-stat-label">Terbaru</span>
+                            </div>
+                            <div class="infog-trend-stat">
+                                <span class="infog-trend-stat-val" id="infog-trend-avg">—</span>
+                                <span class="infog-trend-stat-label">Rata-rata</span>
+                            </div>
+                            <div class="infog-trend-stat">
+                                <span class="infog-trend-stat-val" id="infog-trend-min">—</span>
+                                <span class="infog-trend-stat-label">Minimum</span>
+                            </div>
+                            <div class="infog-trend-stat">
+                                <span class="infog-trend-stat-val" id="infog-trend-max">—</span>
+                                <span class="infog-trend-stat-label">Maksimum</span>
+                            </div>
+                        </div>
+                        <div class="infog-chart-container" style="height: 220px;">
+                            <canvas id="infog-chart-trend"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Narrative & Insight: fills remaining ~540px -->
+                    <div class="infog-two-col" style="flex: 1; min-height: 0;">
+                        <div class="infog-section infog-narrative-section infog-section-compact">
+                            <h2 class="infog-section-title"><i data-lucide="file-text"></i> Kesimpulan Eksekutif</h2>
+                            <div id="infog-l1-narratives" class="infog-narratives"></div>
+                        </div>
+                        <div class="infog-section infog-section-compact">
+                            <h2 class="infog-section-title"><i data-lucide="lightbulb"></i> Temuan Utama</h2>
+                            <div id="infog-l1-insights" class="infog-insight-cards"></div>
+                        </div>
+                    </div>
+                </div> <!-- End Layout 1 -->
+
+                <!-- LAYOUT 2: Business & Data Distribution -->
+                <div id="infog-layout-2" class="infog-layout">
+                    <!-- Business Stats: 3 cards ~140px -->
+                    <div class="infog-section infog-section-compact" style="border-top:none;">
+                        <h2 class="infog-section-title"><i data-lucide="briefcase"></i> Sorotan Bisnis</h2>
+                        <div class="infog-stats-row three-cols">
+                            <div class="infog-stat-card">
+                                <div class="infog-stat-icon purple"><i data-lucide="database"></i></div>
+                                <div class="infog-stat-value" id="infog-l2-rows">—</div>
+                                <div class="infog-stat-label">Total Data</div>
+                            </div>
+                            <div class="infog-stat-card">
+                                <div class="infog-stat-icon orange"><i data-lucide="crosshair"></i></div>
+                                <div class="infog-stat-value small" id="infog-l2-target">—</div>
+                                <div class="infog-stat-label">Fokus Target</div>
+                            </div>
+                            <div class="infog-stat-card">
+                                <div class="infog-stat-icon teal"><i data-lucide="trending-up"></i></div>
+                                <div class="infog-stat-value" id="infog-l2-best-model">—</div>
+                                <div class="infog-stat-label">Model Terpilih</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Correlations + Distribution: 2-col ~280px -->
+                    <div class="infog-two-col">
+                        <div class="infog-section infog-section-compact">
+                            <h2 class="infog-section-title"><i data-lucide="link"></i> Top Korelasi</h2>
+                            <div id="infog-correlations" class="infog-corr-list"></div>
+                        </div>
+                        <div class="infog-section infog-section-compact">
+                            <h2 class="infog-section-title"><i data-lucide="bar-chart"></i> Distribusi Target</h2>
+                            <div class="infog-chart-container" style="height: 180px;">
+                                <canvas id="infog-chart-hist-2"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Narrative & Insight: fills remaining -->
+                    <div class="infog-two-col" style="flex: 1; min-height: 0;">
+                        <div class="infog-section infog-narrative-section infog-section-compact">
+                            <h2 class="infog-section-title"><i data-lucide="file-text"></i> Analisis Korelasi</h2>
+                            <div id="infog-l2-narratives" class="infog-narratives"></div>
+                        </div>
+                        <div class="infog-section infog-section-compact">
+                            <h2 class="infog-section-title"><i data-lucide="lightbulb"></i> Strategi Bisnis</h2>
+                            <div id="infog-l2-insights" class="infog-insight-cards"></div>
+                        </div>
+                    </div>
+                </div> <!-- End Layout 2 -->
+
+                <!-- LAYOUT 3: Technical Deep-Dive -->
+                <div id="infog-layout-3" class="infog-layout">
+                    <!-- Technical Stats: 3 metrics ~140px -->
+                    <div class="infog-section infog-section-compact" style="border-top:none;">
+                        <h2 class="infog-section-title"><i data-lucide="settings"></i> Performa <span id="infog-model-name-3">—</span></h2>
+                        <div class="infog-stats-row three-cols">
+                            <div class="infog-stat-card">
+                                <div class="infog-stat-icon blue"><i data-lucide="activity"></i></div>
+                                <div class="infog-stat-value" id="infog-l3-r2">—</div>
+                                <div class="infog-stat-label">R-Squared</div>
+                            </div>
+                            <div class="infog-stat-card">
+                                <div class="infog-stat-icon orange"><i data-lucide="alert-circle"></i></div>
+                                <div class="infog-stat-value" id="infog-l3-rmse">—</div>
+                                <div class="infog-stat-label">RMSE</div>
+                            </div>
+                            <div class="infog-stat-card">
+                                <div class="infog-stat-icon teal"><i data-lucide="server"></i></div>
+                                <div class="infog-stat-value" id="infog-l3-mae">—</div>
+                                <div class="infog-stat-label">MAE</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Technical Charts: 2-col ~250px -->
+                    <div class="infog-two-col">
+                        <div class="infog-section infog-section-compact">
+                            <h2 class="infog-section-title"><i data-lucide="bar-chart-3"></i> Feature Importance</h2>
+                            <div class="infog-chart-container" style="height: 180px;">
+                                <canvas id="infog-chart-importance-3"></canvas>
+                            </div>
+                        </div>
+                        <div class="infog-section infog-section-compact">
+                            <h2 class="infog-section-title"><i data-lucide="scatter-chart"></i> Fitur vs Target</h2>
+                            <div class="infog-chart-container" style="height: 180px;">
+                                <canvas id="infog-chart-scatter-3"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Narrative & Insight: fills remaining -->
+                    <div class="infog-two-col" style="flex: 1; min-height: 0;">
+                        <div class="infog-section infog-narrative-section infog-section-compact">
+                            <h2 class="infog-section-title"><i data-lucide="file-text"></i> Evaluasi Model</h2>
+                            <div id="infog-l3-narratives" class="infog-narratives"></div>
+                        </div>
+                        <div class="infog-section infog-section-compact">
+                            <h2 class="infog-section-title"><i data-lucide="lightbulb"></i> Rekomendasi Teknis</h2>
+                            <div id="infog-l3-insights" class="infog-insight-cards"></div>
+                        </div>
+                    </div>
+                </div> <!-- End Layout 3 -->
+
+                <!-- Footer -->
+                <div class="infog-footer">
+                    <span>Dihasilkan oleh <strong>Sistem Statistik Prediktif</strong> — PredictIQ</span>
+                    <span id="infog-footer-date"></span>
+                </div>
+
+            </div>
+        </section>
+
     </main>
 
     <!-- ============================================= -->
@@ -1022,6 +1308,7 @@
     </div>
 
     <!-- Custom JavaScript -->
-    <script src="/static/js/app.js?v=1.1"></script>
+    <script src="/static/js/app.js?v=2.1"></script>
 </body>
 </html>
+

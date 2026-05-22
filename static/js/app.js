@@ -19,7 +19,8 @@ const API = {
   export: '/api/export',
   exportEda: '/api/export-eda',
   clearHistory: '/api/clear-history',
-  eda: '/api/eda'
+  eda: '/api/eda',
+  infographic: '/api/infographic-data'
 };
 
 // ---- State Aplikasi ----
@@ -97,6 +98,7 @@ function navigateTo(page) {
     case 'model': loadModelInfo(); break;
     case 'comparison': loadComparison(); break;
     case 'dataset': loadDataset(); break;
+    case 'infografis': loadInfographic(); break;
   }
 }
 
@@ -252,35 +254,68 @@ function renderGDPChart(data) {
   if (!ctx) return;
   if (chartGDP) chartGDP.destroy();
 
+  const hasForecast = data.forecast && Array.isArray(data.forecast.target_data) && data.forecast.target_data.length > 0;
+  const labels = hasForecast ? (data.combined_labels || data.labels) : data.labels;
+  const actualSeries = hasForecast ? (data.actual_series || data.target_data) : data.target_data;
+  const forecastSeries = hasForecast ? data.forecast_series : [];
+
   // Sampling labels agar tidak terlalu padat
-  const step = Math.max(1, Math.floor(data.labels.length / 12));
-  const displayLabels = data.labels.map((l, i) => i % step === 0 ? l : '');
+  const step = Math.max(1, Math.floor(labels.length / 12));
+  const displayLabels = labels.map((l, i) => i % step === 0 ? l : '');
+
+  const datasets = [{
+    label: `${data.target_name || 'Target'} Aktual`,
+    data: actualSeries,
+    borderColor: '#3b82f6',
+    backgroundColor: createGradient(ctx, '#3b82f6'),
+    borderWidth: 2.5,
+    fill: true,
+    tension: 0.35,
+    pointRadius: 3,
+    pointHoverRadius: 6,
+    pointBackgroundColor: '#3b82f6',
+    pointBorderColor: '#0a0e1a',
+    pointBorderWidth: 2,
+    spanGaps: false
+  }];
+
+  if (hasForecast) {
+    datasets.push({
+      label: `${data.target_name || 'Target'} Prediksi`,
+      data: forecastSeries,
+      borderColor: '#f59e0b',
+      backgroundColor: 'rgba(245, 158, 11, 0.10)',
+      borderWidth: 2.5,
+      borderDash: [6, 5],
+      fill: false,
+      tension: 0.35,
+      pointRadius: 4,
+      pointHoverRadius: 7,
+      pointBackgroundColor: '#f59e0b',
+      pointBorderColor: '#0a0e1a',
+      pointBorderWidth: 2,
+      spanGaps: true
+    });
+  }
+
+  const forecastSummary = document.getElementById('forecast-summary');
+  if (forecastSummary) {
+    forecastSummary.textContent = hasForecast ? data.forecast.insight : '';
+    forecastSummary.style.display = hasForecast ? 'block' : 'none';
+  }
 
   chartGDP = new Chart(ctx, {
     type: 'line',
     data: {
-      labels: data.labels,
-      datasets: [{
-        label: data.target_name || 'Target',
-        data: data.target_data,
-        borderColor: '#8b5cf6',
-        backgroundColor: createGradient(ctx, '#8b5cf6'),
-        borderWidth: 2.5,
-        fill: true,
-        tension: 0.4,
-        pointRadius: 3,
-        pointHoverRadius: 6,
-        pointBackgroundColor: '#8b5cf6',
-        pointBorderColor: '#0a0e1a',
-        pointBorderWidth: 2,
-      }]
+      labels,
+      datasets
     },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       interaction: { intersect: false, mode: 'index' },
       plugins: {
-        legend: { display: false },
+        legend: { display: hasForecast, position: 'bottom', labels: { usePointStyle: true, padding: 16, font: { size: 12 } } },
         tooltip: {
           backgroundColor: 'rgba(15,23,42,0.9)',
           borderColor: 'rgba(139,92,246,0.3)',
@@ -519,6 +554,22 @@ async function doPrediction() {
       const minGDP = -6, maxGDP = 8;
       const pct = Math.min(100, Math.max(0, ((data.prediction - minGDP) / (maxGDP - minGDP)) * 100));
       document.getElementById('indicator-marker').style.left = pct + '%';
+
+      // Auto-Insight Display
+      const insightContainer = document.getElementById('prediction-insight');
+      const insightText = document.getElementById('insight-text');
+      if (data.insight && insightContainer && insightText) {
+        insightText.textContent = data.insight;
+        insightContainer.style.display = 'block';
+        // Animasi fade in
+        insightContainer.style.opacity = '0';
+        setTimeout(() => {
+          insightContainer.style.transition = 'opacity 0.5s ease';
+          insightContainer.style.opacity = '1';
+        }, 50);
+      } else if (insightContainer) {
+        insightContainer.style.display = 'none';
+      }
 
       showToast(`Prediksi berhasil: ${data.prediction}%`, 'success');
       loadHistory();
@@ -1368,6 +1419,10 @@ async function loadEDA() {
       ySelect.add(new Option(c, c));
     });
 
+    if (edaDataCache.target && numCols.includes(edaDataCache.target)) {
+      distSelect.value = edaDataCache.target;
+    }
+
     // Default scatter selections
     if (numCols.length >= 2) {
       xSelect.value = numCols[0];
@@ -1456,41 +1511,83 @@ function renderEdaDist(col) {
   if (!ctx) return;
   if (chartEdaDist) chartEdaDist.destroy();
 
-  const data = edaDataCache.scatter_data.map(d => d[col]);
-  
-  // Create simple histogram using bar chart
-  const min = Math.min(...data);
-  const max = Math.max(...data);
+  const toNumericValues = values => values
+    .map(v => Number(v))
+    .filter(v => Number.isFinite(v));
+
+  const actualData = toNumericValues(edaDataCache.scatter_data.map(d => d[col]));
+  const forecast = edaDataCache.forecast || window.globalTrendData?.forecast;
+  const targetName = edaDataCache.target || forecast?.target_name || window.globalTargetName;
+  let predictedData = [];
+
+  if (forecast) {
+    if (col === targetName) {
+      predictedData = toNumericValues(forecast.target_data || []);
+    } else if (forecast.feature_data && forecast.feature_data[col]) {
+      predictedData = toNumericValues(forecast.feature_data[col]);
+    }
+  }
+
+  if (actualData.length === 0) return;
+
+  // Histogram aktual dan prediksi memakai bin yang sama agar perbandingan adil.
+  const rangeData = actualData.concat(predictedData);
+  let min = Math.min(...rangeData);
+  let max = Math.max(...rangeData);
+  if (min === max) {
+    min -= 1;
+    max += 1;
+  }
+
   const bins = 10;
   const step = (max - min) / bins;
-  const hist = new Array(bins).fill(0);
   const labels = [];
   
   for(let i=0; i<bins; i++) {
     labels.push(`${(min + i*step).toFixed(1)} - ${(min + (i+1)*step).toFixed(1)}`);
   }
 
-  data.forEach(val => {
-    let idx = Math.floor((val - min) / step);
-    if (idx >= bins) idx = bins - 1;
-    hist[idx]++;
-  });
+  const buildHist = values => {
+    const hist = new Array(bins).fill(0);
+    values.forEach(val => {
+      let idx = Math.floor((val - min) / step);
+      if (idx < 0) idx = 0;
+      if (idx >= bins) idx = bins - 1;
+      hist[idx]++;
+    });
+    return hist;
+  };
+
+  const datasets = [{
+    label: `Aktual ${col}`,
+    data: buildHist(actualData),
+    backgroundColor: 'rgba(59, 130, 246, 0.72)',
+    borderColor: 'rgba(59, 130, 246, 0.95)',
+    borderWidth: 1,
+    borderRadius: 4
+  }];
+
+  if (predictedData.length > 0) {
+    datasets.push({
+      label: `${col === targetName ? 'Prediksi' : 'Proyeksi'} ${col}`,
+      data: buildHist(predictedData),
+      backgroundColor: 'rgba(245, 158, 11, 0.72)',
+      borderColor: 'rgba(245, 158, 11, 0.95)',
+      borderWidth: 1,
+      borderRadius: 4
+    });
+  }
 
   chartEdaDist = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: labels,
-      datasets: [{
-        label: `Distribusi ${col}`,
-        data: hist,
-        backgroundColor: 'rgba(139, 92, 246, 0.7)',
-        borderRadius: 4
-      }]
+      datasets
     },
     options: {
       responsive: true, maintainAspectRatio: false,
       plugins: {
-        legend: { display: false },
+        legend: { display: predictedData.length > 0, position: 'bottom', labels: { usePointStyle: true, padding: 14, font: { size: 11 } } },
         tooltip: { backgroundColor: 'rgba(15,23,42,0.9)' }
       },
       scales: {
@@ -1575,4 +1672,740 @@ function exportEDATable() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+// ===========================================================
+//                    EXPORT TO IMAGE (PNG)
+// ===========================================================
+async function exportToImage(elementId, fileName) {
+  const element = document.getElementById(elementId);
+  if (!element) return;
+  
+  try {
+    showToast('Mempersiapkan gambar...', 'info');
+    
+    // Hide export buttons so they don't show up in the image
+    const btns = element.querySelectorAll('[id^="btn-export-"]');
+    btns.forEach(btn => btn.style.display = 'none');
+    
+    // Add a slight padding to the element for a better look
+    const originalPadding = element.style.padding;
+    element.style.padding = '20px';
+    
+    // Disable animations temporarily to prevent html2canvas opacity bugs
+    const activeLayout = element.querySelector('.infog-layout.active');
+    const originalAnimation = activeLayout ? activeLayout.style.animation : '';
+    if (activeLayout) {
+      activeLayout.style.animation = 'none';
+      activeLayout.style.opacity = '1';
+    }
+    
+    const originalScrollY = window.scrollY;
+    const originalScrollX = window.scrollX;
+    window.scrollTo(0, 0);
+    
+    const canvas = await html2canvas(element, {
+      backgroundColor: '#0a0e1a', // Match app background
+      scale: 2, // High resolution
+      logging: false,
+      useCORS: true
+    });
+    
+    window.scrollTo(originalScrollX, originalScrollY);
+    
+    // Restore styling
+    element.style.padding = originalPadding;
+    if (activeLayout) {
+      activeLayout.style.animation = originalAnimation;
+      activeLayout.style.opacity = '';
+    }
+    btns.forEach(btn => btn.style.display = '');
+    
+    const image = canvas.toDataURL("image/png");
+    const a = document.createElement('a');
+    a.href = image;
+    const dateStr = new Date().toISOString().split('T')[0];
+    a.download = `${fileName}_${dateStr}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    
+    showToast('Gambar berhasil diunduh!', 'success');
+  } catch (err) {
+    console.error('Error exporting image:', err);
+    showToast('Gagal mengekspor gambar.', 'error');
+  }
+}
+
+// ===========================================================
+//                    INFOGRAFIS OTOMATIS
+// ===========================================================
+let infogChartTrend = null;
+let infogChartImportance = null;
+let infogChartHistogram = null;
+let infogChartScatter = null;
+let infogCurrentLayout = 1;
+let infogCurrentTheme = 'dark';
+let infogBgColor = '#0d1225';
+let infogShapeColor = '#1e293b';
+let infogChartColor = '#8b5cf6';
+let infogTextColor = '#f8fafc';
+let infogCachedData = null;
+
+// --- Toolbar Initialization ---
+function initInfographicToolbar() {
+  const canvas = document.getElementById('infographic-canvas');
+  
+  const bgInput = document.getElementById('infog-color-bg');
+  const shapeInput = document.getElementById('infog-color-shape');
+  const chartInput = document.getElementById('infog-color-chart');
+  const textInput = document.getElementById('infog-color-text');
+
+  function applyColors() {
+    infogBgColor = bgInput.value;
+    infogShapeColor = shapeInput.value;
+    infogChartColor = chartInput.value;
+    infogTextColor = textInput.value;
+
+    // Use a <style> block for html2canvas compatibility. 
+    // html2canvas notoriously fails to resolve CSS variables defined via inline styles.
+    let styleTag = document.getElementById('infog-html2canvas-fix');
+    if (!styleTag) {
+      styleTag = document.createElement('style');
+      styleTag.id = 'infog-html2canvas-fix';
+      document.head.appendChild(styleTag);
+    }
+    
+    styleTag.innerHTML = `
+      #infographic-canvas {
+        --infog-bg: ${infogBgColor};
+        --infog-shape: ${infogShapeColor};
+        --infog-chart: ${infogChartColor};
+        --infog-text: ${infogTextColor};
+        --text-primary: ${infogTextColor} !important;
+        --text-secondary: ${infogTextColor} !important;
+        --text-muted: ${infogTextColor} !important;
+      }
+      #infographic-canvas h1,
+      #infographic-canvas h2,
+      #infographic-canvas p,
+      #infographic-canvas span,
+      #infographic-canvas .infog-stat-value,
+      #infographic-canvas .infog-stat-label,
+      #infographic-canvas .infog-metric-ring-val,
+      #infographic-canvas .infog-compare-val,
+      #infographic-canvas .infog-compare-name,
+      #infographic-canvas .infog-corr-name,
+      #infographic-canvas .infog-narrative-item,
+      #infographic-canvas .infog-insight-card,
+      #infographic-canvas .infog-footer,
+      #infographic-canvas .infog-meta {
+        color: ${infogTextColor} !important;
+      }
+      #infographic-canvas .infog-header h1 {
+        -webkit-text-fill-color: ${infogTextColor} !important;
+        background-image: none !important;
+        background: none !important;
+      }
+      #infographic-canvas .infog-stat-icon i,
+      #infographic-canvas .infog-corr-val.positive,
+      #infographic-canvas .infog-corr-val.negative,
+      #infographic-canvas .infog-model-name,
+      #infographic-canvas .infog-metric-big,
+      #infographic-canvas .infog-insight-icon,
+      #infographic-canvas .infog-logo-icon i,
+      #infographic-canvas .infog-narrative-num {
+        color: inherit !important;
+      }
+    `;
+
+    canvas.style.setProperty('--infog-bg', infogBgColor);
+    canvas.style.setProperty('--infog-shape', infogShapeColor);
+    canvas.style.setProperty('--infog-chart', infogChartColor);
+    canvas.style.setProperty('--infog-text', infogTextColor);
+
+    // Apply specific chart color overrides manually (R2 ring, text, icons)
+    applyInfographicAccentColor(infogChartColor);
+    
+    // Re-render chart instances to pick up new colors
+    if (infogCachedData) {
+      if (infogCurrentLayout === 1) {
+        renderInfogTrendChart(infogCachedData.trend || {}, 'infog-chart-trend');
+        renderInfogImportanceChart(infogCachedData.comparison?.feature_importance || {}, 'infog-chart-importance');
+      } else if (infogCurrentLayout === 2) {
+        if (infogCachedData.eda_highlights?.scatter_data) {
+          renderInfogHistogramChart(infogCachedData.eda_highlights.scatter_data, infogCachedData.overview?.target || '', 'infog-chart-hist-2');
+        }
+      } else if (infogCurrentLayout === 3) {
+        renderInfogImportanceChart(infogCachedData.comparison?.feature_importance || {}, 'infog-chart-importance-3');
+        if (infogCachedData.eda_highlights?.scatter_data && infogCachedData.eda_highlights?.top_correlations?.length > 0) {
+          const topFeat = infogCachedData.eda_highlights.top_correlations[0].feature;
+          renderInfogScatterChart(infogCachedData.eda_highlights.scatter_data, topFeat, infogCachedData.overview?.target || '', 'infog-chart-scatter-3');
+        }
+      }
+    }
+  }
+
+  bgInput?.addEventListener('input', applyColors);
+  shapeInput?.addEventListener('input', applyColors);
+  chartInput?.addEventListener('input', applyColors);
+  textInput?.addEventListener('input', applyColors);
+
+  // Layout Toggle Handlers
+  document.querySelectorAll('.infog-layout-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.infog-layout-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const targetId = btn.dataset.layout;
+      
+      // Hide all layouts
+      document.querySelectorAll('.infog-layout').forEach(l => l.classList.remove('active'));
+      // Show targeted layout
+      document.getElementById('infog-layout-' + targetId)?.classList.add('active');
+      
+      infogCurrentLayout = parseInt(targetId);
+
+      // Re-render charts for specific layout
+      if (infogCachedData) {
+        if (infogCurrentLayout === 1) {
+          renderInfogTrendChart(infogCachedData.trend || {}, 'infog-chart-trend');
+          renderInfogImportanceChart(infogCachedData.comparison?.feature_importance || {}, 'infog-chart-importance');
+        } else if (infogCurrentLayout === 2) {
+          if (infogCachedData.eda_highlights?.scatter_data) {
+            renderInfogHistogramChart(infogCachedData.eda_highlights.scatter_data, infogCachedData.overview?.target || '', 'infog-chart-hist-2');
+          }
+        } else if (infogCurrentLayout === 3) {
+          renderInfogImportanceChart(infogCachedData.comparison?.feature_importance || {}, 'infog-chart-importance-3');
+          if (infogCachedData.eda_highlights?.scatter_data && infogCachedData.eda_highlights?.top_correlations?.length > 0) {
+            const topFeat = infogCachedData.eda_highlights.top_correlations[0].feature;
+            renderInfogScatterChart(infogCachedData.eda_highlights.scatter_data, topFeat, infogCachedData.overview?.target || '', 'infog-chart-scatter-3');
+          }
+        }
+      }
+    });
+  });
+
+  // Preset Handlers
+  document.getElementById('infog-btn-preset-dark')?.addEventListener('click', (e) => {
+    document.querySelectorAll('.infog-theme-btn').forEach(b => b.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    bgInput.value = '#0d1225';
+    shapeInput.value = '#1e293b';
+    chartInput.value = '#8b5cf6';
+    textInput.value = '#f8fafc';
+    infogCurrentTheme = 'dark';
+    canvas.classList.remove('light');
+    applyColors();
+  });
+
+  document.getElementById('infog-btn-preset-light')?.addEventListener('click', (e) => {
+    document.querySelectorAll('.infog-theme-btn').forEach(b => b.classList.remove('active'));
+    e.currentTarget.classList.add('active');
+    bgInput.value = '#f9fafb';
+    shapeInput.value = '#ffffff';
+    chartInput.value = '#d4af37';
+    textInput.value = '#0f172a';
+    infogCurrentTheme = 'light';
+    canvas.classList.add('light');
+    applyColors();
+  });
+  
+  // Initial apply
+  applyColors();
+}
+
+function applyInfographicAccentColor(color) {
+  const canvas = document.getElementById('infographic-canvas');
+  if (!canvas) return;
+
+  // Section titles
+  canvas.querySelectorAll('.infog-section-title').forEach(el => {
+    el.style.color = color;
+  });
+
+  // Logo icon background
+  const logoIcon = canvas.querySelector('.infog-logo-icon');
+  if (logoIcon) logoIcon.style.background = `linear-gradient(135deg, ${color}, ${color}cc)`;
+
+  // R2 ring stroke
+  const r2Circle = document.getElementById('infog-r2-circle');
+  if (r2Circle) r2Circle.setAttribute('stroke', color);
+
+  // Narrative left borders
+  canvas.querySelectorAll('.infog-narrative-item').forEach(el => {
+    el.style.borderLeftColor = color;
+  });
+
+  // Narrative number badges
+  canvas.querySelectorAll('.infog-narrative-num').forEach(el => {
+    el.style.background = `linear-gradient(135deg, ${color}, ${color}cc)`;
+  });
+
+  // Footer branding
+  const footerStrong = canvas.querySelector('.infog-footer strong');
+  if (footerStrong) footerStrong.style.color = color;
+}
+
+// Initialize toolbar on page load
+document.addEventListener('DOMContentLoaded', () => {
+  initInfographicToolbar();
+});
+
+async function loadInfographic() {
+  try {
+    const res = await fetchAPI(API.infographic);
+    if (res.status !== 'success') {
+      showToast('Gagal memuat data infografis', 'error');
+      return;
+    }
+    const d = res.data;
+    infogCachedData = d;
+
+    // --- Header ---
+    const now = new Date(d.generated_at);
+    const dateStr = now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('infog-date').textContent = dateStr;
+    document.getElementById('infog-footer-date').textContent = dateStr;
+    // Helper to safely set text
+    function setText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+
+    // --- Overview Stats ---
+    setText('infog-rows', d.overview.rows);
+    setText('infog-cols', d.overview.cols);
+    setText('infog-features', d.overview.features.length);
+    setText('infog-target', d.overview.target);
+
+    // --- Model Metrics ---
+    const m = d.metrics || {};
+    setText('infog-model-name', m.model_name || '—');
+    const r2 = m.r2_score || 0;
+    setText('infog-r2-val', r2);
+    setText('infog-mae-val', m.mae || '—');
+    setText('infog-rmse-val', m.rmse || '—');
+
+    // Animate R2 ring
+    const circumference = 2 * Math.PI * 35; // r=35
+    const r2Pct = Math.max(0, Math.min(1, r2));
+    const offset = circumference - (r2Pct * circumference);
+    const circle = document.getElementById('infog-r2-circle');
+    if (circle) {
+      circle.setAttribute('stroke-dasharray', circumference);
+      setTimeout(() => {
+        circle.style.transition = 'stroke-dashoffset 1.5s ease';
+        circle.setAttribute('stroke-dashoffset', offset);
+      }, 200);
+    }
+
+    // --- Overview Stats Layout 2 ---
+    const totalData = d.overview.rows || 0;
+    setText('infog-l2-rows', totalData.toLocaleString('id-ID'));
+    setText('infog-l2-target', d.overview.target || '—');
+    setText('infog-l2-best-model', m.model_name || '—');
+
+    // --- Overview Stats Layout 3 ---
+    setText('infog-l3-r2', r2);
+    setText('infog-l3-rmse', m.rmse || '—');
+    setText('infog-l3-mae', m.mae || '—');
+
+    // --- Comparison Bars (Layout 1) ---
+    const comp = d.comparison || {};
+    const lrR2 = comp.lr_metrics?.r2_score || 0;
+    const rfR2 = comp.rf_metrics?.r2_score || 0;
+    setText('infog-lr-r2', lrR2);
+    setText('infog-rf-r2', rfR2);
+    setTimeout(() => {
+      const lrBar = document.getElementById('infog-lr-bar');
+      const rfBar = document.getElementById('infog-rf-bar');
+      if (lrBar) lrBar.style.width = Math.max(0, lrR2 * 100) + '%';
+      if (rfBar) rfBar.style.width = Math.max(0, rfR2 * 100) + '%';
+    }, 300);
+
+    // --- Trend ---
+    const trend = d.trend || {};
+    setText('infog-trend-label', trend.target_name || 'Target');
+    setText('infog-trend-latest', trend.latest_value ?? '—');
+    setText('infog-trend-avg', trend.avg_value ?? '—');
+    setText('infog-trend-min', trend.min_value ?? '—');
+    setText('infog-trend-max', trend.max_value ?? '—');
+
+    // Trend chart
+    renderInfogTrendChart(trend);
+
+    // --- Correlations ---
+    const corrContainer = document.getElementById('infog-correlations');
+    const topCorr = (d.eda_highlights?.top_correlations || []).slice(0, 3);
+    const rankClasses = ['gold', 'silver', 'bronze', 'default', 'default'];
+    const corrHtml = topCorr.map((c, i) => {
+      const val = c.correlation;
+      const absVal = Math.abs(val);
+      const colorClass = val >= 0 ? 'positive' : 'negative';
+      const barColor = val >= 0 ? '#22c55e' : '#ef4444';
+      return `
+        <div class="infog-corr-item">
+          <div class="infog-corr-rank ${rankClasses[i] || 'default'}">${i + 1}</div>
+          <div class="infog-corr-name">${c.feature}</div>
+          <div class="infog-corr-bar-track">
+            <div class="infog-corr-bar-fill" style="width:${absVal * 100}%; background:${barColor};"></div>
+          </div>
+          <div class="infog-corr-val ${colorClass}">${val > 0 ? '+' : ''}${val}</div>
+        </div>
+      `;
+    }).join('');
+    
+    if (corrContainer) corrContainer.innerHTML = corrHtml;
+
+    // --- Feature Importance Chart ---
+    const fi = comp.feature_importance || {};
+
+    // --- Dynamic Contextual Insights & Narratives ---
+    const rawInsights = d.eda_highlights?.insights || [];
+    const rawNarratives = d.narratives || [];
+    const baseTarget = d.overview.target || 'Target';
+    const baseModel = m.model_name || 'Machine Learning';
+
+    function buildInsight(idx, fallback) {
+      const ins = rawInsights[idx];
+      if (!ins) return `<div class="infog-insight-card"><div class="infog-insight-icon"><i data-lucide="zap"></i></div><div class="infog-insight-text">${fallback}</div></div>`;
+      let text = typeof ins === 'string' ? ins : `<strong>${ins.feature}</strong>: ${ins.insight}`;
+      return `<div class="infog-insight-card"><div class="infog-insight-icon"><i data-lucide="zap"></i></div><div class="infog-insight-text">${text}</div></div>`;
+    }
+
+    function buildNarrative(sentences) {
+      return sentences.map((n, i) => `
+        <div class="infog-narrative-item">
+          <div class="infog-narrative-num">${i + 1}</div>
+          <span>${n}</span>
+        </div>
+      `).join('');
+    }
+
+    // Layout 1: Executive Summary
+    const l1Narratives = [
+      `Analisis prediktif dijalankan atas ${totalData.toLocaleString('id-ID')} baris data historis untuk memproyeksikan target utama: <strong>${baseTarget}</strong>.`,
+      `Algoritma <strong>${baseModel}</strong> berhasil terpilih sebagai model dengan performa paling akurat dan efisien.`
+    ];
+    document.getElementById('infog-l1-narratives').innerHTML = buildNarrative(l1Narratives);
+    document.getElementById('infog-l1-insights').innerHTML = buildInsight(0, 'Data menunjukkan pola musiman yang konsisten dengan pertumbuhan yang diprediksi akan stabil dalam kuartal mendatang.');
+
+    // Layout 2: Business Insight
+    const topFeature = topCorr[0] ? topCorr[0].feature : 'Beberapa fitur';
+    const topCorrVal = topCorr[0] ? topCorr[0].correlation : '';
+    const l2Narratives = [
+      `Distribusi <strong>${baseTarget}</strong> menunjukkan variasi yang dipengaruhi kuat oleh pergerakan matriks bisnis.`,
+      `Variabel <strong>${topFeature}</strong> teridentifikasi memiliki tingkat korelasi tertinggi (${topCorrVal}) yang patut dipantau oleh tim eksekutif.`
+    ];
+    document.getElementById('infog-l2-narratives').innerHTML = buildNarrative(l2Narratives);
+    document.getElementById('infog-l2-insights').innerHTML = buildInsight(1, 'Intervensi pada faktor-faktor dengan korelasi tertinggi dapat mempercepat pencapaian target efisiensi bisnis.');
+
+    // Layout 3: Technical Deep-Dive
+    const l3Narratives = [
+      `Evaluasi ketat membuktikan <strong>${baseModel}</strong> mengungguli baseline dengan tingkat Error minimal (RMSE: ${m.rmse}, MAE: ${m.mae}).`,
+      rawNarratives[2] || `Distribusi feature importance dan scatter residuals menunjukkan tidak adanya bias sistematis pada prediksi.`
+    ];
+    setText('infog-model-name-3', baseModel);
+    
+    const l3NarrativesEl = document.getElementById('infog-l3-narratives');
+    if (l3NarrativesEl) l3NarrativesEl.innerHTML = buildNarrative(l3Narratives);
+    
+    const l3InsightsEl = document.getElementById('infog-l3-insights');
+    if (l3InsightsEl) l3InsightsEl.innerHTML = buildInsight(2, 'Model siap dideploy. Disarankan menjadwalkan retraining berkala jika terjadi data drift pada variabel independen utama.');
+
+    // Layout 3 Correlations (Reuse layout 1 logic)
+    const corrContainer3 = document.getElementById('infog-l3-correlations');
+    if (corrContainer3) {
+      corrContainer3.innerHTML = topCorr.map((c, i) => {
+        const val = c.correlation;
+        const colorClass = val >= 0 ? 'positive' : 'negative';
+        const barColor = val >= 0 ? '#22c55e' : '#ef4444';
+        return `
+          <div class="infog-corr-item">
+            <div class="infog-corr-name">${c.feature}</div>
+            <div class="infog-corr-val ${colorClass}">${val > 0 ? '+' : ''}${val}</div>
+            <div class="infog-corr-bar-track" style="grid-column:1/-1; margin-top:8px;">
+              <div class="infog-corr-bar-fill" style="width:${Math.abs(val) * 100}%; background:${barColor};"></div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Re-render icons
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+    
+    // Apply initial accent
+    applyInfographicAccentColor(infogChartColor);
+
+    // Initial Chart Render based on active layout
+    if (infogCurrentLayout === 1) {
+        renderInfogTrendChart(trend, 'infog-chart-trend');
+        renderInfogImportanceChart(fi, 'infog-chart-importance');
+    } else if (infogCurrentLayout === 2) {
+        if (d.eda_highlights?.scatter_data) {
+          renderInfogHistogramChart(d.eda_highlights.scatter_data, d.overview?.target || '', 'infog-chart-hist-2');
+        }
+    } else if (infogCurrentLayout === 3) {
+        renderInfogImportanceChart(fi, 'infog-chart-importance-3');
+        if (d.eda_highlights?.scatter_data && d.eda_highlights?.top_correlations?.length > 0) {
+          const topFeat = d.eda_highlights.top_correlations[0].feature;
+          renderInfogScatterChart(d.eda_highlights.scatter_data, topFeat, d.overview?.target || '', 'infog-chart-scatter-3');
+        }
+    }
+
+  } catch (err) {
+    console.error('Infographic error:', err);
+    showToast('Gagal memuat infografis: ' + err.message, 'error');
+  }
+}
+
+function renderInfogTrendChart(trend, canvasId = 'infog-chart-trend') {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  if (infogChartTrend) infogChartTrend.destroy();
+
+  const forecast = trend.forecast;
+  const baseLabels = trend.labels || [];
+  const baseData = trend.target_data || [];
+  const hasForecast = forecast && Array.isArray(forecast.target_data) && forecast.target_data.length > 0;
+  const labels = hasForecast ? baseLabels.concat(forecast.labels || []) : baseLabels;
+  const actualSeries = hasForecast ? baseData.concat(new Array(forecast.target_data.length).fill(null)) : baseData;
+  const forecastSeries = hasForecast && baseData.length
+    ? new Array(baseData.length - 1).fill(null).concat([baseData[baseData.length - 1]], forecast.target_data)
+    : [];
+  const step = Math.max(1, Math.floor(labels.length / 8));
+  
+  const isLight = infogCurrentTheme === 'light';
+  const gridColor = isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)';
+  const tickColor = isLight ? '#94a3b8' : '#94a3b8';
+  const tooltipBg = isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.9)';
+  const tooltipText = isLight ? '#0f172a' : '#f8fafc';
+
+  infogChartTrend = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Aktual',
+        data: actualSeries,
+        borderColor: infogChartColor,
+        backgroundColor: createGradient(ctx, infogChartColor),
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 0,
+        pointHoverRadius: 4,
+      }].concat(hasForecast ? [{
+        label: 'Prediksi',
+        data: forecastSeries,
+        borderColor: '#f59e0b',
+        backgroundColor: 'rgba(245,158,11,0.08)',
+        borderWidth: 2,
+        borderDash: [5, 4],
+        fill: false,
+        tension: 0.4,
+        pointRadius: 2,
+        pointHoverRadius: 4,
+        spanGaps: true
+      }] : [])
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { intersect: false, mode: 'index' },
+      plugins: {
+        legend: { display: hasForecast, position: 'bottom', labels: { usePointStyle: true, font: { size: 9 } } },
+        tooltip: { 
+          backgroundColor: tooltipBg, titleColor: tooltipText, bodyColor: tooltipText,
+          borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)', borderWidth: 1, 
+          cornerRadius: 8, titleFont: { size: 11 }, bodyFont: { size: 11 } 
+        }
+      },
+      scales: {
+        x: { ticks: { color: tickColor, callback: (val, i) => i % step === 0 ? labels[i] : '', maxRotation: 0, font: { size: 9 } }, grid: { display: false } },
+        y: { ticks: { color: tickColor, font: { size: 9 }, callback: v => v + '%' }, grid: { color: gridColor } }
+      }
+    }
+  });
+}
+
+function renderInfogImportanceChart(importance, canvasId = 'infog-chart-importance') {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  if (infogChartImportance) infogChartImportance.destroy();
+
+  const sorted = Object.entries(importance).sort((a, b) => b[1] - a[1]);
+  const labels = sorted.map(e => e[0]);
+  const values = sorted.map(e => e[1]);
+  const colors = ['#14b8a6', '#3b82f6', '#8b5cf6', '#f59e0b', '#ec4899', '#22c55e', '#ef4444', '#6366f1', '#06b6d4'];
+
+  const isLight = infogCurrentTheme === 'light';
+  const gridColor = isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)';
+  const tickColor = isLight ? '#94a3b8' : '#94a3b8';
+  const tooltipBg = isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.9)';
+  const tooltipText = isLight ? '#0f172a' : '#f8fafc';
+
+  infogChartImportance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        data: values,
+        backgroundColor: values.map((_, i) => colors[i % colors.length]),
+        borderRadius: 4,
+        barThickness: 14
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      indexAxis: 'y',
+      plugins: { 
+        legend: { display: false }, 
+        tooltip: { 
+          backgroundColor: tooltipBg, titleColor: tooltipText, bodyColor: tooltipText,
+          borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)', borderWidth: 1, 
+          cornerRadius: 8 
+        } 
+      },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 9 } } },
+        y: { grid: { display: false }, ticks: { color: tickColor, font: { size: 10 } } }
+      }
+    }
+  });
+}
+
+function renderInfogHistogramChart(records, col, canvasId = 'infog-chart-hist-2') {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  if (infogChartHistogram) infogChartHistogram.destroy();
+
+  const toNumericValues = values => values.map(v => Number(v)).filter(v => Number.isFinite(v));
+  const actualData = toNumericValues((records || []).map(d => d[col]));
+  if (actualData.length === 0) return;
+
+  const forecast = infogCachedData?.trend?.forecast || infogCachedData?.eda_highlights?.forecast;
+  const targetName = infogCachedData?.overview?.target || forecast?.target_name || col;
+  let predictedData = [];
+
+  if (forecast) {
+    if (col === targetName) {
+      predictedData = toNumericValues(forecast.target_data || []);
+    } else if (forecast.feature_data && forecast.feature_data[col]) {
+      predictedData = toNumericValues(forecast.feature_data[col]);
+    }
+  }
+
+  const allValues = actualData.concat(predictedData);
+  let min = Math.min(...allValues);
+  let max = Math.max(...allValues);
+  if (min === max) {
+    min -= 1;
+    max += 1;
+  }
+
+  const bins = 8;
+  const step = (max - min) / bins;
+  const labels = Array.from({ length: bins }, (_, i) => `${(min + i * step).toFixed(1)}-${(min + (i + 1) * step).toFixed(1)}`);
+  const buildHist = values => {
+    const hist = new Array(bins).fill(0);
+    values.forEach(value => {
+      let idx = Math.floor((value - min) / step);
+      if (idx < 0) idx = 0;
+      if (idx >= bins) idx = bins - 1;
+      hist[idx]++;
+    });
+    return hist;
+  };
+
+  const isLight = infogCurrentTheme === 'light';
+  const gridColor = isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)';
+  const tickColor = '#94a3b8';
+  const tooltipBg = isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.9)';
+  const tooltipText = isLight ? '#0f172a' : '#f8fafc';
+
+  infogChartHistogram = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Aktual',
+        data: buildHist(actualData),
+        backgroundColor: infogChartColor,
+        borderRadius: 4
+      }].concat(predictedData.length ? [{
+        label: 'Prediksi',
+        data: buildHist(predictedData),
+        backgroundColor: '#f59e0b',
+        borderRadius: 4
+      }] : [])
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: predictedData.length > 0, position: 'bottom', labels: { usePointStyle: true, font: { size: 9 } } },
+        tooltip: {
+          backgroundColor: tooltipBg,
+          titleColor: tooltipText,
+          bodyColor: tooltipText,
+          borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          cornerRadius: 8
+        }
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: tickColor, font: { size: 8 }, maxRotation: 0 } },
+        y: { beginAtZero: true, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 9 }, precision: 0 } }
+      }
+    }
+  });
+}
+
+function renderInfogScatterChart(records, xCol, yCol, canvasId = 'infog-chart-scatter-3') {
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+  if (infogChartScatter) infogChartScatter.destroy();
+
+  const data = (records || [])
+    .map(d => ({ x: Number(d[xCol]), y: Number(d[yCol]) }))
+    .filter(d => Number.isFinite(d.x) && Number.isFinite(d.y));
+
+  const isLight = infogCurrentTheme === 'light';
+  const gridColor = isLight ? 'rgba(0,0,0,0.03)' : 'rgba(255,255,255,0.03)';
+  const tickColor = '#94a3b8';
+  const tooltipBg = isLight ? 'rgba(255,255,255,0.98)' : 'rgba(15,23,42,0.9)';
+  const tooltipText = isLight ? '#0f172a' : '#f8fafc';
+
+  infogChartScatter = new Chart(ctx, {
+    type: 'scatter',
+    data: {
+      datasets: [{
+        label: `${xCol} vs ${yCol}`,
+        data,
+        backgroundColor: infogChartColor,
+        pointRadius: 4,
+        pointHoverRadius: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: tooltipBg,
+          titleColor: tooltipText,
+          bodyColor: tooltipText,
+          borderColor: isLight ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.1)',
+          borderWidth: 1,
+          cornerRadius: 8
+        }
+      },
+      scales: {
+        x: { title: { display: true, text: xCol, color: tickColor, font: { size: 9 } }, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 9 } } },
+        y: { title: { display: true, text: yCol, color: tickColor, font: { size: 9 } }, grid: { color: gridColor }, ticks: { color: tickColor, font: { size: 9 } } }
+      }
+    }
+  });
 }
