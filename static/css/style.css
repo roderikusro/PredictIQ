@@ -752,10 +752,11 @@ input, select { font-family: inherit; }
   border: 1px solid rgba(139, 92, 246, 0.15);
   overflow: hidden;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  width: 100%;
-  max-width: 650px;
+  width: 650px;
+  height: 1156px;
+  min-width: 650px;
+  min-height: 1156px;
   margin: 0 auto;
-  aspect-ratio: 9 / 16;
   position: relative;
   display: flex;
   flex-direction: column;

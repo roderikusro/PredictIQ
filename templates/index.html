@@ -21,7 +21,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/css/style.css?v=2.1">
+    <link rel="stylesheet" href="/static/css/style.css?v=2.2">
 </head>
 <body>
 
@@ -1090,9 +1090,10 @@
             </div>
 
             <!-- ========== INFOGRAPHIC CANVAS ========== -->
-            <div id="infographic-canvas" class="infographic-canvas">
+            <div class="infographic-canvas-wrapper" style="width: 100%; overflow-x: auto; overflow-y: hidden; padding-bottom: 20px; display: flex; justify-content: center;">
+                <div id="infographic-canvas" class="infographic-canvas">
 
-                <!-- Header Banner -->
+                    <!-- Header Banner -->
                 <div class="infog-header">
                     <div class="infog-header-bg"></div>
                     <div class="infog-header-content">
@@ -1287,6 +1288,7 @@
                     <span id="infog-footer-date"></span>
                 </div>
 
+                </div>
             </div>
         </section>
 
