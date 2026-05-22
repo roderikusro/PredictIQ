@@ -310,7 +310,7 @@ function renderGDPChart(data) {
       labels,
       datasets
     },
-    options: {
+    options: { animation: false,
       responsive: true,
       maintainAspectRatio: false,
       interaction: { intersect: false, mode: 'index' },
@@ -463,7 +463,7 @@ function renderIndicatorsChart() {
       labels: data.labels,
       datasets: datasets
     },
-    options: {
+    options: { animation: false,
       responsive: true,
       maintainAspectRatio: false,
       interaction: { intersect: false, mode: 'index' },
@@ -718,7 +718,7 @@ function renderActualVsPredChart(avp) {
         { label: 'Prediksi', data: avp.predicted, backgroundColor: 'rgba(139,92,246,0.7)', borderRadius: 6 }
       ]
     },
-    options: {
+    options: { animation: false,
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
@@ -748,7 +748,7 @@ function renderCoefficientsChart(coefficients) {
       labels,
       datasets: [{ label: 'Koefisien', data: values, backgroundColor: colors, borderRadius: 6 }]
     },
-    options: {
+    options: { animation: false,
       responsive: true,
       maintainAspectRatio: false,
       indexAxis: 'y',
@@ -1215,7 +1215,7 @@ function renderCompMetricsChart(lr, rf) {
         }
       ]
     },
-    options: {
+    options: { animation: false,
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16, font: { size: 12 } } },
@@ -1252,7 +1252,7 @@ function renderFeatureImportanceChart(importance) {
         borderRadius: 6
       }]
     },
-    options: {
+    options: { animation: false,
       responsive: true, maintainAspectRatio: false,
       indexAxis: 'y',
       plugins: {
@@ -1284,7 +1284,7 @@ function renderCompAVPChart(lrAVP, rfAVP) {
         { label: 'RF Prediksi', data: rfAVP.predicted, backgroundColor: 'rgba(20,184,166,0.7)', borderRadius: 6 }
       ]
     },
-    options: {
+    options: { animation: false,
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16, font: { size: 12 } } },
@@ -1584,7 +1584,7 @@ function renderEdaDist(col) {
       labels: labels,
       datasets
     },
-    options: {
+    options: { animation: false,
       responsive: true, maintainAspectRatio: false,
       plugins: {
         legend: { display: predictedData.length > 0, position: 'bottom', labels: { usePointStyle: true, padding: 14, font: { size: 11 } } },
@@ -1620,7 +1620,7 @@ function renderEdaScatter(xCol, yCol) {
         pointHoverRadius: 8
       }]
     },
-    options: {
+    options: { animation: false,
       responsive: true, maintainAspectRatio: false,
       plugins: {
         tooltip: {
@@ -1703,6 +1703,9 @@ async function exportToImage(elementId, fileName) {
     const originalScrollY = window.scrollY;
     const originalScrollX = window.scrollX;
     window.scrollTo(0, 0);
+    
+    // Wait for any pending Chart.js animations to complete before capturing
+    await new Promise(r => setTimeout(r, 800));
     
     const canvas = await html2canvas(element, {
       backgroundColor: '#0a0e1a', // Match app background
@@ -2210,7 +2213,8 @@ function renderInfogTrendChart(trend, canvasId = 'infog-chart-trend') {
         spanGaps: true
       }] : [])
     },
-    options: {
+    options: { animation: false,
+      animation: false,
       responsive: true, maintainAspectRatio: false,
       interaction: { intersect: false, mode: 'index' },
       plugins: {
@@ -2256,7 +2260,7 @@ function renderInfogImportanceChart(importance, canvasId = 'infog-chart-importan
         barThickness: 14
       }]
     },
-    options: {
+    options: { animation: false,
       responsive: true, maintainAspectRatio: false,
       indexAxis: 'y',
       plugins: { 
@@ -2340,7 +2344,7 @@ function renderInfogHistogramChart(records, col, canvasId = 'infog-chart-hist-2'
         borderRadius: 4
       }] : [])
     },
-    options: {
+    options: { animation: false,
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
@@ -2388,7 +2392,8 @@ function renderInfogScatterChart(records, xCol, yCol, canvasId = 'infog-chart-sc
         pointHoverRadius: 6
       }]
     },
-    options: {
+    options: { animation: false,
+      animation: false,
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
