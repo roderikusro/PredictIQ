@@ -167,12 +167,76 @@ def api_eda():
     Termasuk korelasi, outlier, skewness, descriptive stats, dan insight.
     """
     try:
-        eda_data = model.get_eda()
+        remove_outliers = request.args.get('remove_outliers', 'false').lower() == 'true'
+        eda_data = model.get_eda(remove_outliers=remove_outliers)
         if eda_data:
             return jsonify({'status': 'success', 'data': eda_data})
         else:
             return jsonify({'status': 'error', 'message': 'Dataset belum dimuat'}), 404
 
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+
+@app.route('/api/export-eda', methods=['GET'])
+def api_export_eda():
+    """
+    Export tabel statistik deskriptif EDA dalam format CSV atau Excel.
+    """
+    try:
+        format_type = request.args.get('format', 'csv')
+        remove_outliers = request.args.get('remove_outliers', 'false').lower() == 'true'
+        eda_data = model.get_eda(remove_outliers=remove_outliers)
+        if not eda_data:
+            return jsonify({'status': 'error', 'message': 'Dataset belum dimuat'}), 404
+            
+        header = ['Fitur', 'Obs', 'Mean', 'Median (50%)', 'Std Dev', 'Min', 'Max', 'Outliers (IQR)', 'Missing']
+        data = []
+        num_cols = eda_data.get('numeric_columns', [])
+        
+        import pandas as pd
+        for col in num_cols:
+            desc = eda_data['descriptive'].get(col)
+            out = eda_data['outliers'].get(col, 0)
+            mis = eda_data['missing_values'].get(col, 0)
+            if not desc: continue
+            
+            row = [
+                col,
+                int(desc.get('count', 0)) if pd.notnull(desc.get('count')) else '-',
+                round(desc.get('mean', 0), 2) if pd.notnull(desc.get('mean')) else '-',
+                round(desc.get('50%', 0), 2) if pd.notnull(desc.get('50%')) else '-',
+                round(desc.get('std', 0), 2) if pd.notnull(desc.get('std')) else '-',
+                round(desc.get('min', 0), 2) if pd.notnull(desc.get('min')) else '-',
+                round(desc.get('max', 0), 2) if pd.notnull(desc.get('max')) else '-',
+                out,
+                mis
+            ]
+            data.append(row)
+            
+        if format_type == 'excel':
+            import io
+            df = pd.DataFrame(data, columns=header)
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='Statistik Deskriptif')
+            output.seek(0)
+            return Response(
+                output.getvalue(),
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                headers={'Content-Disposition': f'attachment; filename=eda_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'}
+            )
+        else:
+            output = StringIO()
+            writer = csv.writer(output)
+            writer.writerow(header)
+            writer.writerows(data)
+            output.seek(0)
+            return Response(
+                output.getvalue(),
+                mimetype='text/csv',
+                headers={'Content-Disposition': f'attachment; filename=eda_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'}
+            )
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
@@ -272,7 +336,7 @@ def api_history():
 @app.route('/api/upload-csv', methods=['POST'])
 def api_upload_csv():
     """
-    Upload file CSV baru untuk melatih ulang model.
+    Upload file CSV atau Excel baru untuk melatih ulang model.
     File harus memiliki kolom 'GDP_Growth_Persen' sebagai target.
     """
     try:
@@ -284,8 +348,8 @@ def api_upload_csv():
         if file.filename == '':
             return jsonify({'status': 'error', 'message': 'Nama file kosong'}), 400
 
-        if not file.filename.endswith('.csv'):
-            return jsonify({'status': 'error', 'message': 'Hanya file CSV yang diizinkan'}), 400
+        if not (file.filename.endswith('.csv') or file.filename.endswith('.xlsx') or file.filename.endswith('.xls')):
+            return jsonify({'status': 'error', 'message': 'Hanya file CSV atau Excel (.xlsx, .xls) yang diizinkan'}), 400
 
         # Simpan file yang diunggah
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -344,40 +408,60 @@ def api_configure_model():
 @app.route('/api/export', methods=['GET'])
 def api_export():
     """
-    Export riwayat prediksi dalam format CSV.
+    Export riwayat prediksi dalam format CSV atau Excel.
     """
     try:
+        format_type = request.args.get('format', 'csv')
         history = model.get_history()
 
         if not history:
             return jsonify({'status': 'error', 'message': 'Belum ada riwayat prediksi'}), 404
 
-        # Buat CSV dari riwayat
-        output = StringIO()
-        writer = csv.writer(output)
-
-        # Header
+        # Menyiapkan data list
         header = ['No', 'Timestamp', 'Prediksi_GDP_Growth', 'Model']
         input_keys = list(history[0]['input'].keys()) if history else []
         header.extend(input_keys)
-        writer.writerow(header)
-
-        # Data
+        
+        data = []
         for i, record in enumerate(history, 1):
             row = [i, record['timestamp'], record['prediction'], record['model']]
             for key in input_keys:
                 row.append(record['input'].get(key, ''))
-            writer.writerow(row)
+            data.append(row)
 
-        # Kirim sebagai file download
-        output.seek(0)
-        return Response(
-            output.getvalue(),
-            mimetype='text/csv',
-            headers={
-                'Content-Disposition': f'attachment; filename=prediksi_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
-            }
-        )
+        if format_type == 'excel':
+            import io
+            import pandas as pd
+            
+            df = pd.DataFrame(data, columns=header)
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='openpyxl') as writer:
+                df.to_excel(writer, index=False, sheet_name='Riwayat Prediksi')
+            
+            output.seek(0)
+            return Response(
+                output.getvalue(),
+                mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                headers={
+                    'Content-Disposition': f'attachment; filename=prediksi_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx'
+                }
+            )
+        else:
+            # Default: Buat CSV
+            output = StringIO()
+            writer = csv.writer(output)
+            writer.writerow(header)
+            writer.writerows(data)
+
+            # Kirim sebagai file download
+            output.seek(0)
+            return Response(
+                output.getvalue(),
+                mimetype='text/csv',
+                headers={
+                    'Content-Disposition': f'attachment; filename=prediksi_export_{datetime.now().strftime("%Y%m%d_%H%M%S")}.csv'
+                }
+            )
 
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500

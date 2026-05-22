@@ -17,6 +17,7 @@ const API = {
   history: '/api/history',
   upload: '/api/upload-csv',
   export: '/api/export',
+  exportEda: '/api/export-eda',
   clearHistory: '/api/clear-history',
   eda: '/api/eda'
 };
@@ -971,7 +972,7 @@ function initDatasetSearch() {
 }
 
 // ===========================================================
-//                    UPLOAD CSV
+//                    UPLOAD CSV / EXCEL
 // ===========================================================
 function initUpload() {
   const fileInput = document.getElementById('file-upload-input');
@@ -1009,8 +1010,11 @@ function initUpload() {
 //                    EXPORT & CLEAR
 // ===========================================================
 function initExport() {
-  document.getElementById('btn-export-history')?.addEventListener('click', () => {
-    window.location.href = API.export;
+  document.getElementById('btn-export-history-csv')?.addEventListener('click', () => {
+    window.location.href = API.export + '?format=csv';
+  });
+  document.getElementById('btn-export-history-excel')?.addEventListener('click', () => {
+    window.location.href = API.export + '?format=excel';
   });
 }
 
@@ -1067,7 +1071,15 @@ function showLoading(show) {
 
 // Refresh buttons & Export
 document.getElementById('btn-refresh-trend')?.addEventListener('click', loadDashboard);
-document.getElementById('btn-export-eda')?.addEventListener('click', exportEDATable);
+document.getElementById('btn-export-eda-csv')?.addEventListener('click', () => { 
+  const removeOutliers = document.getElementById('toggle-remove-outliers')?.checked || false;
+  window.location.href = API.exportEda + '?format=csv&remove_outliers=' + removeOutliers; 
+});
+document.getElementById('btn-export-eda-excel')?.addEventListener('click', () => { 
+  const removeOutliers = document.getElementById('toggle-remove-outliers')?.checked || false;
+  window.location.href = API.exportEda + '?format=excel&remove_outliers=' + removeOutliers; 
+});
+document.getElementById('toggle-remove-outliers')?.addEventListener('change', loadEDA);
 
 // ===========================================================
 //                    PERBANDINGAN MODEL
@@ -1281,7 +1293,8 @@ function initCompareForm() {
 async function loadEDA() {
   try {
     showLoading(true);
-    const res = await fetchAPI(API.eda);
+    const removeOutliers = document.getElementById('toggle-remove-outliers')?.checked || false;
+    const res = await fetchAPI(API.eda + '?remove_outliers=' + removeOutliers);
     if (res.status !== 'success') return;
     edaDataCache = res.data;
 
@@ -1331,6 +1344,7 @@ async function loadEDA() {
       tbody.innerHTML += `
         <tr>
           <td><strong>${col}</strong></td>
+          <td>${desc.count ? desc.count : '-'}</td>
           <td>${desc.mean ? desc.mean.toFixed(2) : '-'}</td>
           <td>${desc['50%'] ? desc['50%'].toFixed(2) : '-'}</td>
           <td>${desc.std ? desc.std.toFixed(2) : '-'}</td>

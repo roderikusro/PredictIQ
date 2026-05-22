@@ -308,11 +308,21 @@
                 <div class="card" style="grid-column: 1 / -1;">
                     <div class="card-header">
                         <h3>Statistik Deskriptif</h3>
-                        <div class="card-actions">
-                            <button class="btn btn-sm btn-ghost" id="btn-export-eda" title="Export CSV">
+                        <div class="card-actions" style="display: flex; align-items: center; gap: 1rem;">
+                            <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.875rem;">
+                                <input type="checkbox" id="toggle-remove-outliers">
+                                <span>Hitung Tanpa Outliers</span>
+                            </label>
+                            <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-sm btn-ghost" id="btn-export-eda-csv" title="Export CSV">
                                 <i data-lucide="download"></i>
-                                <span>Export</span>
+                                <span>CSV</span>
                             </button>
+                            <button class="btn btn-sm btn-ghost" id="btn-export-eda-excel" title="Export Excel">
+                                <i data-lucide="download"></i>
+                                <span>Excel</span>
+                            </button>
+                            </div>
                         </div>
                     </div>
                     <div class="card-body">
@@ -321,6 +331,7 @@
                                 <thead>
                                     <tr>
                                         <th>Fitur</th>
+                                        <th>Obs</th>
                                         <th>Mean</th>
                                         <th>Median (50%)</th>
                                         <th>Std Dev</th>
@@ -426,9 +437,13 @@
                         <div class="card-header">
                             <h3><i data-lucide="history"></i> Riwayat Prediksi</h3>
                             <div class="card-actions">
-                                <button class="btn btn-sm btn-ghost" id="btn-export-history" title="Export CSV">
+                                <button class="btn btn-sm btn-ghost" id="btn-export-history-csv" title="Export CSV">
                                     <i data-lucide="download"></i>
-                                    <span>Export</span>
+                                    <span>CSV</span>
+                                </button>
+                                <button class="btn btn-sm btn-ghost" id="btn-export-history-excel" title="Export Excel">
+                                    <i data-lucide="download"></i>
+                                    <span>Excel</span>
                                 </button>
                                 <button class="btn btn-sm btn-ghost btn-danger" id="btn-clear-history" title="Hapus Riwayat">
                                     <i data-lucide="trash-2"></i>
@@ -690,9 +705,9 @@
                 <div class="header-actions">
                     <label class="btn btn-primary btn-upload" for="file-upload-input">
                         <i data-lucide="upload"></i>
-                        <span>Upload CSV</span>
+                        <span>Upload CSV / Excel</span>
                     </label>
-                    <input type="file" id="file-upload-input" accept=".csv" style="display:none;">
+                    <input type="file" id="file-upload-input" accept=".csv, .xlsx, .xls" style="display:none;">
                 </div>
             </div>
 

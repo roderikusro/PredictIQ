@@ -69,10 +69,10 @@ class PredictiveModel:
 
     def load_and_train(self, dataset_path=None, target_col=None, feature_cols=None, time_cols=None):
         """
-        Memuat dataset CSV (opsional jika sudah dimuat) dan melatih kedua model secara otomatis.
+        Memuat dataset CSV atau Excel (opsional jika sudah dimuat) dan melatih kedua model secara otomatis.
         
         Args:
-            dataset_path (str, optional): Path ke file CSV dataset
+            dataset_path (str, optional): Path ke file CSV/Excel dataset
             target_col (str, optional): Nama kolom target
             feature_cols (list, optional): List nama kolom fitur
             
@@ -82,7 +82,10 @@ class PredictiveModel:
         try:
             # ---- 1. Memuat Dataset ----
             if dataset_path:
-                self.df = pd.read_csv(dataset_path, sep=None, engine='python')
+                if dataset_path.lower().endswith('.xlsx') or dataset_path.lower().endswith('.xls'):
+                    self.df = pd.read_excel(dataset_path)
+                else:
+                    self.df = pd.read_csv(dataset_path, sep=None, engine='python')
                 self.dataset_path = dataset_path
                 
                 # Pembersihan cerdas: Coba paksa konversi kolom objek ke numerik dengan mempertahankan desimal
@@ -611,7 +614,7 @@ class PredictiveModel:
         """Menghapus riwayat prediksi."""
         self.prediction_history = []
 
-    def get_eda(self):
+    def get_eda(self, remove_outliers=False):
         """
         Melakukan Exploratory Data Analysis dan mengembalikan data 
         untuk divisualisasikan di frontend.
@@ -621,19 +624,9 @@ class PredictiveModel:
         
         # Buat dataframe khusus untuk EDA yang hanya berisi fitur terpilih dan target
         selected_cols = list(dict.fromkeys(self.feature_names + [self.target_name]))
-        df_eda = self.df[selected_cols]
+        df_eda = self.df[selected_cols].copy()
 
-        # 1. Descriptive stats (hanya numerik)
-        desc = df_eda.describe(include=[np.number]).to_dict()
-        
-        # 2. Correlation Matrix (hanya numerik)
-        corr_matrix = df_eda.corr(numeric_only=True)
-        corr_dict = corr_matrix.round(3).to_dict()
-
-        # 3. Missing values
-        missing_values = df_eda.isnull().sum().to_dict()
-
-        # 4. Outlier detection (IQR method) & Skewness
+        # Hitung bounds untuk outliers terlebih dahulu agar kita bisa memfilter data jika diminta
         outliers_info = {}
         skewness_info = {}
         for col in df_eda.select_dtypes(include=[np.number]).columns:
@@ -644,7 +637,25 @@ class PredictiveModel:
             upper_bound = Q3 + 1.5 * IQR
             outliers = df_eda[(df_eda[col] < lower_bound) | (df_eda[col] > upper_bound)]
             outliers_info[col] = len(outliers)
-            skewness_info[col] = df_eda[col].skew()
+            skew_val = df_eda[col].skew()
+            skewness_info[col] = None if pd.isna(skew_val) else skew_val
+            
+            # Jika opsi hapus outlier diaktifkan, ganti nilai outlier menjadi NaN
+            if remove_outliers:
+                df_eda.loc[(df_eda[col] < lower_bound) | (df_eda[col] > upper_bound), col] = np.nan
+
+        # 1. Descriptive stats (hanya numerik)
+        desc_df = df_eda.describe(include=[np.number])
+        desc = desc_df.replace({np.nan: None}).to_dict()
+        
+        # 2. Correlation Matrix (hanya numerik)
+        corr_matrix = df_eda.corr(numeric_only=True)
+        corr_dict = corr_matrix.round(3).replace({np.nan: None}).to_dict()
+
+        # 3. Missing values
+        missing_values = df_eda.isnull().sum().to_dict()
+
+        # (Outlier detection & Skewness sudah dihitung di atas, info tetap asli sebelum filter)
 
         # 5. Generate Insights
         insights = []
@@ -681,13 +692,13 @@ class PredictiveModel:
             insights.append("Tidak ditemukan outlier signifikan menggunakan metode IQR.")
 
         # Insight: Skewness
-        skewed_cols = [k for k, v in skewness_info.items() if abs(v) > 1]
+        skewed_cols = [k for k, v in skewness_info.items() if v is not None and abs(v) > 1]
         if skewed_cols:
             insights.append(f"Distribusi tidak normal (skewed) terdeteksi pada: {', '.join(skewed_cols)}.")
 
         # 6. Scatter data preparation (sampling to avoid large payload if dataset is huge, but here it's 40 rows)
         # We can just pass the dataframe records
-        scatter_data = df_eda.to_dict(orient='records')
+        scatter_data = df_eda.replace({np.nan: None}).to_dict(orient='records')
 
         return {
             'descriptive': desc,
