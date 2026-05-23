@@ -4,9 +4,42 @@ Dokumen ini menjelaskan secara rinci alur, pemrosesan matematika, serta kalkulas
 
 ---
 
-## 1. Alur Pemrosesan Data (Data Pipeline)
+## 1. Alur Kerja Utama (Workflow Keseluruhan)
 
-Sebelum algoritma *Machine Learning* dapat memprediksi nilai target (misalnya *GDP Growth*), sekumpulan data harus melewati tahapan prapemrosesan (data preprocessing) yang ketat.
+Diagram di bawah ini menggambarkan alur lengkap *end-to-end* sejak data diinput hingga model menghasilkan metrik prediksi.
+
+```mermaid
+graph TD
+    A[Dataset CSV/Excel] --> B(Pemrosesan String Numerik)
+    B --> C(Imputasi Median pada Nilai Kosong)
+    C --> D{Pemisahan Data}
+    
+    D -->|80% Data Latih| E[StandardScaler fit_transform]
+    D -->|20% Data Uji| F[StandardScaler transform]
+    
+    E --> G(Pelatihan Linear Regression)
+    E --> H(Pelatihan Random Forest)
+    
+    F --> I(Prediksi Data Uji LR)
+    F --> J(Prediksi Data Uji RF)
+    
+    G --> I
+    H --> J
+    
+    I --> K[Evaluasi Metrik: MAE, RMSE, R²]
+    J --> L[Evaluasi Metrik: MAE, RMSE, R²]
+    
+    K --> M{Pemilihan Best Model}
+    L --> M
+    
+    M --> N[JSON API Response]
+```
+
+---
+
+## 2. Prapemrosesan Data (Data Preprocessing)
+
+Sebelum algoritma *Machine Learning* dapat memprediksi nilai target (misalnya *GDP Growth*), sekumpulan data harus melewati tahapan prapemrosesan yang ketat.
 
 ### 1.1 Pembersihan String Numerik (Data Cleaning)
 Ketika data diunggah dalam format CSV atau Excel, banyak angka yang terbaca sebagai tipe string/teks akibat adanya karakter asing (seperti `Rp`, `%`, pemisah ribuan, atau koma desimal versi Indonesia). Sistem melakukan *parsing* dengan heuristik cerdas:
@@ -75,11 +108,22 @@ Setelah model dilatih dengan 80% data, 20% sisa data (X_test) ditebak oleh mesin
 
 ---
 
-## 4. Exploratory Data Analysis (EDA)
+## 5. Exploratory Data Analysis (EDA)
 
 Selain Machine Learning, modul API `/api/eda` menggunakan pandas/NumPy untuk menjalankan *statistika deskriptif*.
 
-### 4.1 Korelasi Pearson (Linear Correlation)
+```mermaid
+graph LR
+    A[Dataset Mentah] --> B(Korelasi Pearson)
+    A --> C(Kemiringan/Skewness)
+    A --> D(Deteksi Outlier IQR)
+    
+    B --> E[Top Korelasi & Scatter Plot]
+    C --> F[Pola Distribusi Data]
+    D --> G[Total Data Pencilan]
+```
+
+### 5.1 Korelasi Pearson (Linear Correlation)
 Digunakan untuk melihat kaitan timbal-balik antar 2 fitur numerik secara linier:
 $$ r_{xy} = \frac{\sum (x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum (x_i - \bar{x})^2 \sum (y_i - \bar{y})^2}} $$
 - Nilai $r$ berada di rentang **-1.0** (berkebalikan arah kuat) hingga **+1.0** (searah identik).
@@ -102,9 +146,25 @@ Mendeteksi apakah terdapat data yang tidak wajar (pencilan) dengan menghitung ba
 
 ---
 
-## 5. Algoritma Pemilihan "Best Model"
+## 6. Algoritma Pemilihan "Best Model"
 
-Ketika *user* mengirim permintaan prediksi melalui endpoint gabungan (`/api/predict-compare`), sistem tidak hanya menjalankan dua kali perhitungan matematis, namun juga membandingkan nilai R² (Koefisien Determinasi).
+Ketika *user* mengirim permintaan prediksi melalui endpoint gabungan (`/api/predict-compare`), sistem secara otomatis menjalankan algoritma turnamen antar-model:
+
+```mermaid
+graph TD
+    A[Terima Input Pengguna] --> B(Jalankan Prediksi LR)
+    A --> C(Jalankan Prediksi RF)
+    
+    B --> D[Bandingkan Nilai R-Squared]
+    C --> D
+    
+    D -->|R² RF > LR| E[Pilih Random Forest]
+    D -->|R² LR > RF| F[Pilih Linear Regression]
+    
+    E --> G[Sajikan Prediksi Utama & Ekstrak Feature Importance Gini]
+    F --> G
+```
+
 1. Jika $R^2_{Random Forest} > R^2_{Linear Regression}$, maka mesin menyimpulkan Random Forest yang paling unggul (atau sebaliknya).
 2. Prediksi akhir yang disarankan ke layar pengguna adalah murni keluaran dari *Best Model* tersebut.
 3. Nilai *Feature Importance* (Tingkat Kepentingan Variabel) akan secara eksklusif dicabut dari hitungan *Gini Impurity* pada cabang algoritma Random Forest karena umumnya lebih akurat merepresentasikan peta kausalitas non-linier dibandingkan hanya bersandar pada bobot koefisien linear.
