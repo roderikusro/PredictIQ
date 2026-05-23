@@ -16,6 +16,7 @@ Aplikasi menggunakan arsitektur SPA dengan navigasi berbasis JavaScript. Semua h
 | `page-model` | Tentang Model | Detail model, koefisien, actual vs predicted |
 | `page-comparison` | Perbandingan | Perbandingan kedua model side-by-side |
 | `page-dataset` | Dataset | Viewer, konfigurasi model, upload CSV |
+| `page-infografis` | Otomasi Infografis | Generator infografis otomatis dengan rasio statis 9:16 untuk diekspor sebagai PNG |
 
 ### 6.2 JavaScript Modules (`app.js` — 1565 baris)
 

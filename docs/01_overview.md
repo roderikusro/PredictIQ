@@ -24,6 +24,7 @@ Sistem ini adalah aplikasi web berbasis Flask yang menyediakan kemampuan prediks
 | 8 | Upload CSV | Upload dataset baru, otomatis melatih ulang model |
 | 9 | Export Prediksi | Download riwayat prediksi dalam format CSV |
 | 10 | Dark Mode UI | Antarmuka gelap modern dengan efek glassmorphism |
+| 11 | Otomasi Infografis | Generate infografis dinamis (3 layout) dan ekspor ke PNG rasio 9:16 |
 
 ### 1.3 Tech Stack
 
@@ -37,6 +38,7 @@ Sistem ini adalah aplikasi web berbasis Flask yang menyediakan kemampuan prediks
 | Serialization | Joblib | 1.5.0 |
 | Frontend | HTML5, CSS3, JavaScript ES6+ | — |
 | Charting | Chart.js | CDN |
+| Export Image | html2canvas | CDN |
 | Icons | Lucide Icons | CDN |
 | Font | Inter (Google Fonts) | CDN |
 | Deployment | PythonAnywhere (WSGI) | — |

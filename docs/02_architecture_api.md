@@ -127,6 +127,7 @@ model = PredictiveModel(dataset_path=DEFAULT_DATASET)
 | `POST` | `/api/predict` | Prediksi single model | `{feature_values, model_type}` | `{prediction, model, timestamp}` |
 | `POST` | `/api/predict-compare` | Prediksi kedua model | `{feature_values}` | `{lr_pred, rf_pred, best, insight}` |
 | `GET` | `/api/history` | Riwayat prediksi | — | `{data: [...], total: N}` |
+| `GET` | `/api/infographic-data`| Data gabungan untuk Infografis otomatis | — | `{overview, metrics, eda, comparison, ...}` |
 | `POST` | `/api/upload-csv` | Upload dataset CSV baru | `multipart/form-data` | `{metrics}` |
 | `POST` | `/api/configure-model` | Konfigurasi ulang model | `{target, features, time_cols}` | `{metrics}` |
 | `GET` | `/api/export` | Export riwayat ke CSV | — | CSV file download |
