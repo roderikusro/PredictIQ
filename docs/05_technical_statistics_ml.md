@@ -59,7 +59,11 @@ Dataset dibagi secara acak dengan proporsi **80:20**:
 
 ### 1.4 Standarisasi Fitur (Feature Scaling)
 Data ekonomi seperti "Populasi (Juta)" dan "Inflasi (%)" memiliki skala ukuran yang sangat berbeda jauh. Algoritma matematis akan kesulitan atau bias terhadap skala yang besar. Oleh karena itu, semua fitur ditransformasi menggunakan **StandardScaler (Z-Score Normalization)**:
-$$ z = \frac{x - \mu}{\sigma} $$
+
+$$
+z = \frac{x - \mu}{\sigma}
+$$
+
 Di mana $x$ adalah nilai asli, $\mu$ adalah rata-rata (mean), dan $\sigma$ adalah standar deviasi. Hasilnya, setiap fitur akan terpusat di angka 0 dengan standar deviasi 1. Masing-masing model (Linear Regression dan Random Forest) memiliki instance Scaler-nya sendiri agar tidak terjadi kebocoran data (*Data Leakage*).
 
 ---
@@ -72,7 +76,10 @@ Sistem ini menjalankan **dua algoritma** Regresi secara simultan (bersamaan) lal
 Model parametrik klasik yang mencari garis (atau bidang/hyperplane) lurus paling optimal (Ordinary Least Squares) untuk meminimalkan selisih jarak (*residuals*) antara prediksi dan aktual.
 
 - **Formula Matematika:**
-  $$ y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + ... + \beta_n x_n + \epsilon $$
+
+$$
+y = \beta_0 + \beta_1 x_1 + \beta_2 x_2 + ... + \beta_n x_n + \epsilon
+$$
 - **Penjelasan:** $y$ adalah prediksi target (misal PDB), $x_i$ adalah fitur pendukung (inflasi, investasi, dsb.), $\beta_i$ adalah koefisien bobot tiap fitur, $\beta_0$ adalah *intercept* (konstanta dasar), dan $\epsilon$ adalah galat (*error*).
 - **Penggunaan:** Digunakan sebagai dasar komparasi linear (baseline). Sangat baik dalam mendeteksi korelasi lurus namun akan gagal memodelkan tren ekonomi yang sangat berfluktuasi/non-linear.
 
@@ -93,15 +100,27 @@ Algoritma berbasis Ansambel (*Ensemble Learning*) berjenis pembagian (*bagging*)
 Setelah model dilatih dengan 80% data, 20% sisa data (X_test) ditebak oleh mesin. Lalu hasil tebakannya dibandingkan dengan realita aslinya (y_test) menggunakan formula statistika berikut:
 
 1. **MAE (Mean Absolute Error):**
-   $$ MAE = \frac{1}{n} \sum_{i=1}^{n} | y_i - \hat{y}_i | $$
+
+$$
+MAE = \frac{1}{n} \sum_{i=1}^{n} | y_i - \hat{y}_i |
+$$
+
    Menghitung rata-rata nilai mutlak dari selisih simpangan. Nilai ini menggambarkan dengan bahasa intuitif: *"Secara rata-rata, prediksi mesin meleset sebesar {MAE} poin"*.
 
 2. **RMSE (Root Mean Squared Error):**
-   $$ RMSE = \sqrt{ \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 } $$
+
+$$
+RMSE = \sqrt{ \frac{1}{n} \sum_{i=1}^{n} (y_i - \hat{y}_i)^2 }
+$$
+
    Selisih simpangan dikuadratkan dulu agar penalti sangat memberatkan galat/kesalahan yang besar (*large errors/outliers*), baru diakar. Idealnya RMSE sangat dekat dengan nilai MAE. Jika RMSE jauh di atas MAE, artinya model memiliki sedikit kesalahan tetapi berbobot amat fatal.
 
 3. **R-Squared ($R^2$ Score / Koefisien Determinasi):**
-   $$ R^2 = 1 - \frac{\sum (y_i - \hat{y}_i)^2}{\sum (y_i - \bar{y})^2} $$
+
+$$
+R^2 = 1 - \frac{\sum (y_i - \hat{y}_i)^2}{\sum (y_i - \bar{y})^2}
+$$
+
    Mengukur seberapa besar proporsi fluktuasi/variansi dari variabel target yang **berhasil dijelaskan** oleh fitur yang disediakan.
    - Nilai Maksimal 1.0 (100% sempurna). 
    - Nilai $0.80$ bermakna bahwa $80\%$ perubahan dari target mampu dijelaskan logikanya oleh pola fitur X, dan 20% sisanya disebabkan oleh faktor-faktor gaib lain di luar parameter dataset.
@@ -125,18 +144,24 @@ graph LR
 
 ### 5.1 Korelasi Pearson (Linear Correlation)
 Digunakan untuk melihat kaitan timbal-balik antar 2 fitur numerik secara linier:
-$$ r_{xy} = \frac{\sum (x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum (x_i - \bar{x})^2 \sum (y_i - \bar{y})^2}} $$
+
+$$
+r_{xy} = \frac{\sum (x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum (x_i - \bar{x})^2 \sum (y_i - \bar{y})^2}}
+$$
 - Nilai $r$ berada di rentang **-1.0** (berkebalikan arah kuat) hingga **+1.0** (searah identik).
 - Digunakan aplikasi pada bagian *"Fitur Paling Berpengaruh (Top Correlations)"* dan metrik Scatter Plot.
 
-### 4.2 Skewness (Kemiringan Distribusi)
-$$ \text{Skewness} = \frac{n}{(n-1)(n-2)} \sum \left( \frac{x_i - \bar{x}}{s} \right)^3 $$
+### 5.2 Skewness (Kemiringan Distribusi)
+
+$$
+\text{Skewness} = \frac{n}{(n-1)(n-2)} \sum \left( \frac{x_i - \bar{x}}{s} \right)^3
+$$
 Digunakan untuk mengecek apakah sebaran data condong (miring).
 - **Nilai ~0:** Distribusi Normal / Bel (Gaussian).
 - **Positif (>1):** Ekor distribusi menjulur ke kanan (Right Skewed / Positive Skewness).
 - **Negatif (<-1):** Ekor distribusi menjulur ke kiri (Left Skewed).
 
-### 4.3 Deteksi Outlier Ekstrem (Metode IQR)
+### 5.3 Deteksi Outlier Ekstrem (Metode IQR)
 Mendeteksi apakah terdapat data yang tidak wajar (pencilan) dengan menghitung batas Interkuartil.
 1. Cari Kuartil 1 (P25) dan Kuartil 3 (P75).
 2. Hitung rentang interkuartil: $IQR = Q_3 - Q_1$.
@@ -168,3 +193,44 @@ graph TD
 1. Jika $R^2_{Random Forest} > R^2_{Linear Regression}$, maka mesin menyimpulkan Random Forest yang paling unggul (atau sebaliknya).
 2. Prediksi akhir yang disarankan ke layar pengguna adalah murni keluaran dari *Best Model* tersebut.
 3. Nilai *Feature Importance* (Tingkat Kepentingan Variabel) akan secara eksklusif dicabut dari hitungan *Gini Impurity* pada cabang algoritma Random Forest karena umumnya lebih akurat merepresentasikan peta kausalitas non-linier dibandingkan hanya bersandar pada bobot koefisien linear.
+
+---
+
+## 7. Default Forecast & Blended Prediction (Auto-Insight)
+
+Sistem memiliki fitur **Auto-Insight** yang mampu memproyeksikan Target (seperti Pertumbuhan GDP) beberapa *step* (kuartal/tahun) ke depan secara otomatis, bahkan tanpa intervensi pengguna pada *form* input. Hal ini dienkapsulasi dalam metode `get_forward_forecast()`.
+
+Proses kalkulasinya berjalan melalui langkah-langkah berikut:
+
+### 7.1. Ekstrapolasi Fitur Mandiri (Feature Projection)
+Sistem tidak memprediksi masa depan dari kekosongan. Untuk menebak ke depan, sistem memproyeksikan terlebih dahulu setiap fitur pendukung (seperti Inflasi, Suku Bunga) menggunakan **Regresi Linear Sederhana** berdasarkan sekelompok nilai observasi terbaru.
+Untuk mencegah tebakan liar tak terbatas (*runaway predictions*), *slope* (kemiringan) hasil regresi diredam dengan *damping factor* sebesar `0.55`. Seluruh hasil ekstrapolasi dijaga agar tidak melewati rentang wajar masa lalu (Guardrails = Q1/Q3 ± 1.5 IQR).
+
+### 7.2. Model Scoring (Prediksi Model)
+Nilai-nilai masa depan hasil ekstrapolasi pada langkah pertama kemudian diumpankan sebagai *input vector* ke dalam **Model Terbaik** yang terpilih saat pelatihan (Random Forest atau Linear Regression). Model ini akan mengeluarkan prediksi nilai Target (misalnya GDP) untuk setiap langkah waktu ke depan.
+
+$$
+\hat{y}_{model} = \text{Predict}(\text{Future Features})
+$$
+
+### 7.3. Baseline Target Projection
+Sistem juga menghitung proyeksi dasar langsung (*direct baseline*) dari variabel Target itu sendiri, menggunakan teknik ekstrapolasi teredam yang sama seperti langkah 7.1. Ini bertindak sebagai jaring pengaman (*safety net*).
+
+$$
+\hat{y}_{baseline} = \text{Extrapolate}(\text{Historical Target})
+$$
+
+### 7.4. Blended Forecast (Pemulusan Prediksi)
+Karena prediksi di masa depan mengandung akumulasi ketidakpastian tinggi (menebak Target menggunakan Fitur yang juga hasil tebakan), sistem memadukan kedua proyeksi menjadi satu **Blended Forecast**.
+Bobot (*weight*) perpaduan didasarkan pada tingkat kecerdasan/keandalan model (diukur dengan skor $R^2$):
+- **Jika $R^2 \ge 0.70$:** $\text{Weight}_{model} = 0.75$ (Sangat percaya pada model)
+- **Jika $R^2 \ge 0.30$:** $\text{Weight}_{model} = 0.55$
+- **Jika $R^2 < 0.30$:** $\text{Weight}_{model} = 0.05$ (Lebih mengandalkan tren garis lurus karena model kurang akurat)
+
+Formula final *Blended Forecast*:
+
+$$
+\text{Final Prediction} = (\hat{y}_{model} \times \text{Weight}_{model}) + (\hat{y}_{baseline} \times (1 - \text{Weight}_{model}))
+$$
+
+Melalui kombinasi ini, prediksi jauh ke depan tetap dinamis namun dikalibrasi agar stabil dan tidak mengalami lonjakan fluktuasi irasional.
