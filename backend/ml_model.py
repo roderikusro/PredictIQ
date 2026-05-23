@@ -24,6 +24,23 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.preprocessing import StandardScaler
 
+try:
+    from xgboost import XGBRegressor
+    XGBOOST_AVAILABLE = True
+    XGB_IS_FALLBACK = False
+except ImportError:
+    from sklearn.ensemble import GradientBoostingRegressor
+    
+    class XGBRegressor(GradientBoostingRegressor):
+        def __init__(self, n_estimators=200, max_depth=4, learning_rate=0.05, subsample=0.8, **kwargs):
+            super().__init__(n_estimators=n_estimators, max_depth=max_depth, learning_rate=learning_rate, subsample=subsample, random_state=42)
+            
+        def fit(self, X, y, eval_set=None, verbose=False):
+            return super().fit(X, y)
+            
+    XGBOOST_AVAILABLE = True
+    XGB_IS_FALLBACK = True
+
 
 class PredictiveModel:
     """
@@ -49,6 +66,12 @@ class PredictiveModel:
         self.rf_scaler = StandardScaler()
         self.rf_metrics = {}
         self.rf_pred_test = None
+
+        # XGBoost
+        self.xgb_model = None
+        self.xgb_scaler = StandardScaler()
+        self.xgb_metrics = {}
+        self.xgb_pred_test = None
 
         # Shared state
         self.is_trained = False
@@ -206,6 +229,47 @@ class PredictiveModel:
             self.rf_metrics = self._calc_metrics(self.y_test, self.rf_pred_test)
             print("[INFO] Random Forest berhasil dilatih!")
 
+            # ---- 6. Melatih XGBoost ----
+            self.xgb_model = None
+            self.xgb_metrics = {}
+            self.xgb_pred_test = None
+            if XGBOOST_AVAILABLE:
+                try:
+                    X_train_xgb = self.xgb_scaler.fit_transform(self.X_train)
+                    X_test_xgb = self.xgb_scaler.transform(self.X_test)
+
+                    self.xgb_model = XGBRegressor(
+                        n_estimators=200,
+                        max_depth=4,
+                        learning_rate=0.05,
+                        subsample=0.8,
+                        colsample_bytree=0.8,
+                        reg_alpha=0.1,
+                        reg_lambda=1.0,
+                        random_state=42,
+                        n_jobs=-1,
+                        verbosity=0,
+                        early_stopping_rounds=20,
+                        eval_metric='rmse'
+                    )
+                    self.xgb_model.fit(
+                        X_train_xgb,
+                        self.y_train,
+                        eval_set=[(X_test_xgb, self.y_test)],
+                        verbose=False
+                    )
+                    self.xgb_pred_test = self.xgb_model.predict(X_test_xgb)
+                    self.xgb_metrics = self._calc_metrics(self.y_test, self.xgb_pred_test)
+                    self.xgb_metrics['best_iteration'] = self._get_xgb_best_iteration()
+                    print("[INFO] XGBoost berhasil dilatih!")
+                except Exception as xgb_error:
+                    self.xgb_model = None
+                    self.xgb_metrics = {}
+                    self.xgb_pred_test = None
+                    print(f"[WARNING] XGBoost gagal dilatih: {xgb_error}")
+            else:
+                print("[WARNING] XGBoost tidak tersedia. Install paket 'xgboost' untuk mengaktifkan model ini.")
+
             self.is_trained = True
 
             # Record default forward prediction to history
@@ -234,7 +298,11 @@ class PredictiveModel:
 
             return {
                 'linear_regression': self.lr_metrics,
-                'random_forest': self.rf_metrics
+                'random_forest': self.rf_metrics,
+                'xgboost': self.xgb_metrics if XGBOOST_AVAILABLE and self.xgb_model is not None else {
+                    'available': False,
+                    'message': "XGBoost tidak tersedia atau belum dilatih."
+                }
             }
 
         except Exception as e:
@@ -254,10 +322,20 @@ class PredictiveModel:
             'mse': round(mse, 4),
             'rmse': round(math.sqrt(mse), 4),
             'r2_score': round(r2_score(y_true, y_pred), 4),
+            'r2': round(r2_score(y_true, y_pred), 4),
             'train_size': len(self.y_train),
             'test_size': len(self.y_test),
             'total_data': len(self.y_train) + len(self.y_test)
         }
+
+    def _get_xgb_best_iteration(self):
+        """Ambil best_iteration XGBoost secara aman lintas versi."""
+        if self.xgb_model is None:
+            return None
+        best_iteration = getattr(self.xgb_model, 'best_iteration', None)
+        if best_iteration is None:
+            best_iteration = getattr(self.xgb_model, 'best_iteration_', None)
+        return int(best_iteration) if best_iteration is not None else None
 
     def predict(self, input_data, model_type='linear_regression'):
         """
@@ -265,7 +343,7 @@ class PredictiveModel:
         
         Args:
             input_data (dict): Dictionary berisi nilai fitur
-            model_type (str): 'linear_regression' atau 'random_forest'
+            model_type (str): 'linear_regression', 'random_forest', atau 'xgboost'
                 
         Returns:
             dict: Hasil prediksi beserta detail
@@ -287,10 +365,18 @@ class PredictiveModel:
                 input_scaled = self.rf_scaler.transform(input_array)
                 prediction = self.rf_model.predict(input_scaled)[0]
                 model_name = 'Random Forest'
-            else:
+            elif model_type == 'xgboost':
+                if not XGBOOST_AVAILABLE or self.xgb_model is None:
+                    raise ValueError("XGBoost tidak tersedia atau belum dilatih.")
+                input_scaled = self.xgb_scaler.transform(input_array)
+                prediction = self.xgb_model.predict(input_scaled)[0]
+                model_name = 'XGBoost'
+            elif model_type == 'linear_regression':
                 input_scaled = self.lr_scaler.transform(input_array)
                 prediction = self.lr_model.predict(input_scaled)[0]
                 model_name = 'Linear Regression'
+            else:
+                raise ValueError("model_type harus salah satu dari: linear_regression, random_forest, xgboost")
 
             # --- Generate Single Prediction Insight ---
             insight = ""
@@ -319,12 +405,18 @@ class PredictiveModel:
                         insight_text += f" Namun, angka ini sedikit tertahan oleh pengaruh negatif dari {main_risk.replace('_', ' ')}."
                         
                     insight = insight_text
-                else:
+                elif model_type == 'random_forest':
                     importances = {name: imp for name, imp in zip(self.feature_names, self.rf_model.feature_importances_)}
                     sorted_imp = sorted(importances.items(), key=lambda item: item[1], reverse=True)
                     top_feature = sorted_imp[0][0]
                     direction = "naik" if prediction > 0 else "turun"
                     insight = f"Model memprediksi {self.target_name} akan {direction}. Faktor paling krusial yang menentukan pola prediksi ini adalah {top_feature.replace('_', ' ')}."
+                else:
+                    importances = {name: imp for name, imp in zip(self.feature_names, self.xgb_model.feature_importances_)}
+                    sorted_imp = sorted(importances.items(), key=lambda item: item[1], reverse=True)
+                    top_feature = sorted_imp[0][0]
+                    direction = "naik" if prediction > 0 else "turun"
+                    insight = f"XGBoost memprediksi {self.target_name} akan {direction}. Fitur dengan gain/importance tertinggi adalah {top_feature.replace('_', ' ')}."
             except Exception as e:
                 insight = "Tidak dapat menggenerasi narasi insight untuk model ini."
 
@@ -337,22 +429,20 @@ class PredictiveModel:
                 'model_type': model_type,
                 'insight': insight
             }
+            if model_type == 'xgboost':
+                result['best_iteration'] = self._get_xgb_best_iteration()
             self.prediction_history.append(result)
             return result
 
+        except ValueError:
+            raise
         except Exception as e:
             raise Exception(f"Gagal melakukan prediksi: {str(e)}")
 
     def predict_comparison(self, input_data):
         """
-        Melakukan prediksi GDP Growth menggunakan KEDUA model.
+        Melakukan prediksi GDP Growth menggunakan semua model tersedia.
         Mengembalikan perbandingan hasil dan insight otomatis.
-        
-        Args:
-            input_data (dict): Dictionary berisi nilai fitur
-                
-        Returns:
-            dict: Hasil prediksi kedua model beserta insight
         """
         if not self.is_trained:
             raise Exception("Model belum dilatih.")
@@ -367,34 +457,47 @@ class PredictiveModel:
 
             input_array = np.array(input_values).reshape(1, -1)
 
-            # Linear Regression prediction
             lr_scaled = self.lr_scaler.transform(input_array)
             lr_pred = float(self.lr_model.predict(lr_scaled)[0])
 
-            # Random Forest prediction
             rf_scaled = self.rf_scaler.transform(input_array)
             rf_pred = float(self.rf_model.predict(rf_scaled)[0])
 
-            # Determine best model based on R2 score
-            lr_r2 = self.lr_metrics.get('r2_score', 0)
-            rf_r2 = self.rf_metrics.get('r2_score', 0)
-            lr_mae = self.lr_metrics.get('mae', 999)
-            rf_mae = self.rf_metrics.get('mae', 999)
+            xgb_pred = None
+            xgb_result = None
+            if XGBOOST_AVAILABLE and self.xgb_model is not None:
+                xgb_scaled = self.xgb_scaler.transform(input_array)
+                xgb_pred = float(self.xgb_model.predict(xgb_scaled)[0])
+                xgb_result = {
+                    'prediction': round(xgb_pred, 4),
+                    'metrics': self.xgb_metrics,
+                    'best_iteration': self._get_xgb_best_iteration()
+                }
 
-            if rf_r2 > lr_r2:
-                best_model = 'Random Forest'
-                best_pred = rf_pred
-            else:
-                best_model = 'Linear Regression'
-                best_pred = lr_pred
+            candidates = {
+                'Linear Regression': {
+                    'prediction': lr_pred,
+                    'r2': self.lr_metrics.get('r2_score', 0)
+                },
+                'Random Forest': {
+                    'prediction': rf_pred,
+                    'r2': self.rf_metrics.get('r2_score', 0)
+                }
+            }
+            if xgb_result:
+                candidates['XGBoost'] = {
+                    'prediction': xgb_pred,
+                    'r2': self.xgb_metrics.get('r2_score', 0)
+                }
 
-            # Generate insight
-            diff = abs(lr_pred - rf_pred)
-            insight = self._generate_insight(lr_pred, rf_pred, best_model, diff, lr_r2, rf_r2, lr_mae, rf_mae)
+            best_model = max(candidates, key=lambda name: candidates[name]['r2'])
+            best_pred = candidates[best_model]['prediction']
+            available_preds = [lr_pred, rf_pred] + ([xgb_pred] if xgb_pred is not None else [])
+            spread = max(available_preds) - min(available_preds)
+            insight = self._generate_insight(lr_pred, rf_pred, xgb_pred, best_model)
 
             timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-            # Store in history (best model prediction)
             result_record = {
                 'input': input_data,
                 'prediction': round(best_pred, 4),
@@ -413,9 +516,11 @@ class PredictiveModel:
                     'prediction': round(rf_pred, 4),
                     'metrics': self.rf_metrics
                 },
+                'xgboost': xgb_result,
                 'best_model': best_model,
                 'best_prediction': round(best_pred, 4),
-                'difference': round(diff, 4),
+                'difference': round(abs(lr_pred - rf_pred), 4),
+                'spread': round(spread, 4),
                 'insight': insight,
                 'timestamp': timestamp,
                 'input': input_data
@@ -424,32 +529,48 @@ class PredictiveModel:
         except Exception as e:
             raise Exception(f"Gagal melakukan prediksi perbandingan: {str(e)}")
 
-    def _generate_insight(self, lr_pred, rf_pred, best_model, diff, lr_r2, rf_r2, lr_mae, rf_mae):
+    def _generate_insight(self, lr_pred, rf_pred, xgb_pred, best_model):
         """Generate insight otomatis tentang perbandingan model."""
         insights = []
+        metrics_by_model = {
+            'Linear Regression': self.lr_metrics,
+            'Random Forest': self.rf_metrics
+        }
+        preds = [lr_pred, rf_pred]
+        if xgb_pred is not None:
+            metrics_by_model['XGBoost'] = self.xgb_metrics
+            preds.append(xgb_pred)
 
-        # Insight tentang best model
-        if best_model == 'Random Forest':
-            insights.append(f"Random Forest menunjukkan performa lebih baik dengan R2 Score {rf_r2} vs {lr_r2} (Linear Regression).")
-        else:
-            insights.append(f"Linear Regression menunjukkan performa lebih baik dengan R2 Score {lr_r2} vs {rf_r2} (Random Forest).")
+        best_r2 = metrics_by_model.get(best_model, {}).get('r2_score', 0)
+        insights.append(f"{best_model} menunjukkan performa terbaik dengan R2 Score {best_r2}.")
 
-        # Insight tentang perbedaan prediksi
-        if diff < 0.5:
-            insights.append(f"Kedua model menghasilkan prediksi yang sangat mirip (selisih {round(diff, 2)}%), menunjukkan konsistensi yang baik.")
-        elif diff < 1.5:
-            insights.append(f"Terdapat perbedaan moderat ({round(diff, 2)}%) antara kedua model. Pertimbangkan menggunakan prediksi dari model terbaik.")
+        spread = max(preds) - min(preds)
+        if xgb_pred is not None:
+            if spread < 0.3:
+                insights.append("Ketiga model sangat konsisten dengan spread prediksi di bawah 0.3%.")
+            elif spread < 1.0:
+                insights.append(f"Terdapat variasi moderat antar model dengan spread {round(spread, 2)}%.")
+            else:
+                insights.append(f"Perbedaan signifikan antar model dengan spread {round(spread, 2)}%. Pertimbangkan validasi lebih lanjut.")
         else:
-            insights.append(f"Perbedaan prediksi cukup signifikan ({round(diff, 2)}%). Disarankan menggunakan model dengan R2 Score tertinggi.")
+            diff = abs(lr_pred - rf_pred)
+            if diff < 0.5:
+                insights.append(f"Kedua model menghasilkan prediksi yang sangat mirip dengan selisih {round(diff, 2)}%.")
+            elif diff < 1.5:
+                insights.append(f"Terdapat perbedaan moderat {round(diff, 2)}% antara kedua model.")
+            else:
+                insights.append(f"Perbedaan prediksi cukup signifikan sebesar {round(diff, 2)}%.")
 
-        # Insight tentang MAE
-        if rf_mae < lr_mae:
-            insights.append(f"Random Forest memiliki error lebih rendah (MAE: {rf_mae}) dibanding Linear Regression (MAE: {lr_mae}).")
-        else:
-            insights.append(f"Linear Regression memiliki error lebih rendah (MAE: {lr_mae}) dibanding Random Forest (MAE: {rf_mae}).")
+        mae_winner = min(metrics_by_model, key=lambda name: metrics_by_model[name].get('mae', 999))
+        insights.append(f"{mae_winner} memiliki error MAE terendah ({metrics_by_model[mae_winner].get('mae', '-')}).")
+
+        if xgb_pred is not None:
+            xgb_vs_rf = abs(xgb_pred - rf_pred)
+            pattern_text = "hasil hampir identik" if xgb_vs_rf < 0.2 else "ada perbedaan pola non-linear"
+            insights.append(f"XGBoost dan Random Forest berbeda {xgb_vs_rf:.3f}% sehingga {pattern_text}.")
 
         # Insight tentang prediksi GDP
-        avg_pred = (lr_pred + rf_pred) / 2
+        avg_pred = sum(preds) / len(preds)
         if avg_pred > 5:
             insights.append("Prediksi menunjukkan pertumbuhan ekonomi yang kuat (>5%).")
         elif avg_pred > 3:
@@ -465,32 +586,50 @@ class PredictiveModel:
         """Mengembalikan metrik evaluasi dari model terbaik."""
         if not self.is_trained:
             return {}
-            
-        lr_r2 = self.lr_metrics.get('r2_score', 0)
-        rf_r2 = self.rf_metrics.get('r2_score', 0)
-        
-        if rf_r2 > lr_r2:
-            best_metrics = self.rf_metrics.copy()
-            best_metrics['model_name'] = 'Random Forest'
-        else:
-            best_metrics = self.lr_metrics.copy()
-            best_metrics['model_name'] = 'Linear Regression'
+
+        model_metrics = self._get_available_model_metrics()
+        best_model = max(model_metrics, key=lambda name: model_metrics[name].get('r2_score', -999))
+        best_metrics = model_metrics[best_model].copy()
+        best_metrics['model_name'] = best_model
+        best_metrics['linear_regression'] = self.lr_metrics
+        best_metrics['random_forest'] = self.rf_metrics
+        best_metrics['xgboost'] = self.xgb_metrics if XGBOOST_AVAILABLE and self.xgb_model is not None else {
+            'available': False,
+            'message': "XGBoost tidak tersedia atau belum dilatih."
+        }
+        best_metrics['lr'] = self.lr_metrics
+        best_metrics['rf'] = self.rf_metrics
+        best_metrics['xgb'] = best_metrics['xgboost']
             
         return best_metrics
 
     def get_comparison_metrics(self):
-        """Mengembalikan metrik perbandingan kedua model."""
+        """Mengembalikan metrik perbandingan semua model."""
         if not self.is_trained:
             return None
 
-        lr_r2 = self.lr_metrics.get('r2_score', 0)
-        rf_r2 = self.rf_metrics.get('r2_score', 0)
-        lr_mae = self.lr_metrics.get('mae', 999)
-        rf_mae = self.rf_metrics.get('mae', 999)
+        model_metrics = self._get_available_model_metrics()
+        best_model = max(model_metrics, key=lambda name: model_metrics[name].get('r2_score', -999))
+        xgb_available = XGBOOST_AVAILABLE and self.xgb_model is not None
+        xgb_comparison = {
+            'name': 'XGBoost',
+            'type': 'gradient_boosting',
+            'description': 'Model gradient boosting dengan regularisasi L1/L2 untuk menangkap pola non-linear.',
+            'metrics': self.xgb_metrics if xgb_available else {},
+            'available': xgb_available,
+            'best_iteration': self._get_xgb_best_iteration() if xgb_available else None
+        }
+        if xgb_available:
+            xgb_comparison['actual_vs_predicted'] = {
+                'actual': [round(float(v), 4) for v in self.y_test],
+                'predicted': [round(float(v), 4) for v in self.xgb_pred_test]
+            }
+            xgb_comparison['feature_importance'] = {
+                name: round(float(imp), 6)
+                for name, imp in zip(self.feature_names, self.xgb_model.feature_importances_)
+            }
 
-        best_model = 'Random Forest' if rf_r2 > lr_r2 else 'Linear Regression'
-
-        return {
+        result = {
             'linear_regression': {
                 'name': 'Linear Regression',
                 'type': 'linear',
@@ -515,23 +654,54 @@ class PredictiveModel:
                     for name, imp in zip(self.feature_names, self.rf_model.feature_importances_)
                 }
             },
+            'xgboost': xgb_comparison,
+            'lr': {
+                'name': 'Linear Regression',
+                'metrics': self.lr_metrics
+            },
+            'rf': {
+                'name': 'Random Forest',
+                'metrics': self.rf_metrics
+            },
+            'xgb': {
+                'name': 'XGBoost',
+                'metrics': self.xgb_metrics if xgb_available else {},
+                'available': xgb_available,
+                'best_iteration': self._get_xgb_best_iteration() if xgb_available else None
+            },
             'best_model': best_model,
             'summary': self._generate_comparison_summary(best_model)
         }
+        return result
 
     def _generate_comparison_summary(self, best_model):
         """Generate ringkasan perbandingan model."""
-        lr = self.lr_metrics
-        rf = self.rf_metrics
+        model_metrics = self._get_available_model_metrics()
+        r2_winner = max(model_metrics, key=lambda name: model_metrics[name].get('r2_score', -999))
+        mae_winner = min(model_metrics, key=lambda name: model_metrics[name].get('mae', 999))
+        rmse_winner = min(model_metrics, key=lambda name: model_metrics[name].get('rmse', 999))
+        r2_values = [m.get('r2_score', 0) for m in model_metrics.values()]
+        mae_values = [m.get('mae', 0) for m in model_metrics.values()]
+        rmse_values = [m.get('rmse', 0) for m in model_metrics.values()]
         return {
             'best_model': best_model,
-            'r2_winner': 'Random Forest' if rf['r2_score'] > lr['r2_score'] else 'Linear Regression',
-            'mae_winner': 'Random Forest' if rf['mae'] < lr['mae'] else 'Linear Regression',
-            'rmse_winner': 'Random Forest' if rf['rmse'] < lr['rmse'] else 'Linear Regression',
-            'r2_diff': round(abs(rf['r2_score'] - lr['r2_score']), 4),
-            'mae_diff': round(abs(rf['mae'] - lr['mae']), 4),
-            'rmse_diff': round(abs(rf['rmse'] - lr['rmse']), 4),
+            'r2_winner': r2_winner,
+            'mae_winner': mae_winner,
+            'rmse_winner': rmse_winner,
+            'r2_diff': round(max(r2_values) - min(r2_values), 4),
+            'mae_diff': round(max(mae_values) - min(mae_values), 4),
+            'rmse_diff': round(max(rmse_values) - min(rmse_values), 4),
         }
+
+    def _get_available_model_metrics(self):
+        """Metrik model yang sudah dilatih dan bisa dibandingkan."""
+        metrics = {
+            'Linear Regression': self.lr_metrics,
+            'Random Forest': self.rf_metrics
+        }
+        if XGBOOST_AVAILABLE and self.xgb_model is not None and self.xgb_metrics:
+            metrics['XGBoost'] = self.xgb_metrics
+        return metrics
 
     def get_history(self):
         """Mengembalikan riwayat prediksi."""
@@ -539,12 +709,16 @@ class PredictiveModel:
 
     def _get_best_estimator(self):
         """Mengambil estimator terbaik berdasarkan R2 score."""
-        lr_r2 = self.lr_metrics.get('r2_score', -999)
-        rf_r2 = self.rf_metrics.get('r2_score', -999)
+        candidates = {
+            'linear_regression': (self.lr_model, self.lr_scaler, 'Linear Regression', self.lr_metrics),
+            'random_forest': (self.rf_model, self.rf_scaler, 'Random Forest', self.rf_metrics)
+        }
+        if XGBOOST_AVAILABLE and self.xgb_model is not None and self.xgb_metrics:
+            candidates['xgboost'] = (self.xgb_model, self.xgb_scaler, 'XGBoost', self.xgb_metrics)
 
-        if rf_r2 > lr_r2:
-            return 'random_forest', self.rf_model, self.rf_scaler, 'Random Forest', self.rf_metrics
-        return 'linear_regression', self.lr_model, self.lr_scaler, 'Linear Regression', self.lr_metrics
+        best_key = max(candidates, key=lambda key: candidates[key][3].get('r2_score', -999))
+        estimator, scaler, model_name, metrics = candidates[best_key]
+        return best_key, estimator, scaler, model_name, metrics
 
     def _infer_time_columns(self):
         """Inferensi kolom waktu dari konfigurasi atau nama kolom umum."""
@@ -934,6 +1108,46 @@ class PredictiveModel:
         """
         if not self.is_trained:
             return None
+
+        if model_type == 'xgboost':
+            if not XGBOOST_AVAILABLE or self.xgb_model is None:
+                return {
+                    'model_type': 'xgboost',
+                    'available': False,
+                    'error': "XGBoost tidak tersedia atau belum dilatih."
+                }
+            feature_imp = {
+                name: round(float(imp), 6)
+                for name, imp in zip(self.feature_names, self.xgb_model.feature_importances_)
+            }
+            best_iteration = self._get_xgb_best_iteration()
+            return {
+                'model_type': 'XGBoost',
+                'library': 'xgboost',
+                'features': self.feature_names,
+                'target': self.target_name,
+                'feature_importance': feature_imp,
+                'metrics': self.xgb_metrics,
+                'best_iteration': best_iteration,
+                'n_estimators_used': best_iteration + 1 if best_iteration is not None else None,
+                'hyperparameters': {
+                    'n_estimators': 200,
+                    'max_depth': 4,
+                    'learning_rate': 0.05,
+                    'subsample': 0.8,
+                    'colsample_bytree': 0.8,
+                    'reg_alpha': 0.1,
+                    'reg_lambda': 1.0
+                },
+                'scaler': 'StandardScaler',
+                'test_split': '20%',
+                'train_split': '80%',
+                'description': 'Model XGBoost menggunakan gradient boosting dengan regularisasi untuk menangkap pola non-linear pada data ekonomi.',
+                'actual_vs_predicted': {
+                    'actual': [round(float(v), 4) for v in self.y_test],
+                    'predicted': [round(float(v), 4) for v in self.xgb_pred_test]
+                }
+            }
 
         if model_type == 'random_forest':
             feature_imp = {

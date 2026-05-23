@@ -21,7 +21,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/css/style.css?v=2.3">
+    <link rel="stylesheet" href="/static/css/style.css?v=2.5">
 </head>
 <body>
 
@@ -184,6 +184,19 @@
                     </div>
                     <div class="stat-trend">
                         <span class="stat-sub" id="val-train-test">—</span>
+                    </div>
+                </div>
+
+                <div class="stat-card" id="stat-xgb-r2">
+                    <div class="stat-icon orange">
+                        <i data-lucide="rocket"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">XGBoost R² Score</span>
+                        <span class="stat-value" id="val-xgb-r2">N/A</span>
+                    </div>
+                    <div class="stat-trend">
+                        <span class="stat-sub" id="val-xgb-status">Belum tersedia</span>
                     </div>
                 </div>
             </div>
@@ -389,6 +402,7 @@
                                     <select id="input-model" name="model_type" required>
                                         <option value="linear_regression">Linear Regression</option>
                                         <option value="random_forest">Random Forest</option>
+                                        <option value="xgboost">XGBoost</option>
                                     </select>
                                 </div>
                                 <div id="dynamic-prediction-inputs" style="display: contents;"></div>
@@ -515,6 +529,7 @@
                     <select id="model-type-selector" class="model-selector">
                         <option value="linear_regression">Linear Regression</option>
                         <option value="random_forest">Random Forest</option>
+                        <option value="xgboost">XGBoost</option>
                     </select>
                 </div>
             </div>
@@ -695,6 +710,28 @@
                             <li>Kurang interpretable dibandingkan Linear Regression.</li>
                             <li>Waktu training lebih lama untuk dataset besar.</li>
                             <li>Membutuhkan tuning hyperparameter yang tepat.</li>
+                        </ul>
+                    </div>
+
+                    <!-- XGBoost Explanation -->
+                    <div class="description-content" id="desc-xgb" style="display:none;">
+                        <h4>Apa itu XGBoost?</h4>
+                        <p>XGBoost adalah algoritma gradient boosting berbasis ensemble yang membangun pohon keputusan secara bertahap. Setiap iterasi belajar dari error model sebelumnya sehingga mampu menangkap pola non-linear dengan regularisasi yang lebih kuat.</p>
+
+                        <h4>Konfigurasi Model</h4>
+                        <ul>
+                            <li><strong>n_estimators = 200:</strong> Jumlah maksimum boosting round.</li>
+                            <li><strong>max_depth = 4:</strong> Pohon dibuat dangkal untuk mengurangi overfitting pada dataset kecil.</li>
+                            <li><strong>learning_rate = 0.05:</strong> Pembelajaran dibuat konservatif agar generalisasi lebih stabil.</li>
+                            <li><strong>subsample dan colsample_bytree = 0.8:</strong> Sampling baris dan fitur untuk menekan variance.</li>
+                            <li><strong>reg_alpha dan reg_lambda:</strong> Regularisasi L1/L2 untuk mengendalikan kompleksitas model.</li>
+                        </ul>
+
+                        <h4>Kelebihan</h4>
+                        <ul>
+                            <li><strong>Regularisasi:</strong> Lebih tahan overfitting dibanding ensemble pohon biasa.</li>
+                            <li><strong>Early stopping:</strong> Training berhenti saat performa validasi tidak membaik.</li>
+                            <li><strong>Feature Importance:</strong> Menunjukkan fitur yang paling berkontribusi terhadap prediksi.</li>
                         </ul>
                     </div>
 
@@ -949,6 +986,34 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- XGBoost Card -->
+                <div class="card comparison-card" id="comp-card-xgb">
+                    <div class="card-header">
+                        <div class="comp-model-title">
+                            <div class="comp-icon orange"><i data-lucide="rocket"></i></div>
+                            <h3>XGBoost</h3>
+                        </div>
+                        <span class="badge" id="badge-xgb">—</span>
+                    </div>
+                    <div class="card-body">
+                        <p class="comp-desc">Model gradient boosting dengan regularisasi untuk menangkap pola non-linear.</p>
+                        <div class="comp-metrics">
+                            <div class="comp-metric-item">
+                                <span class="comp-metric-label">MAE</span>
+                                <span class="comp-metric-value" id="comp-xgb-mae">N/A</span>
+                            </div>
+                            <div class="comp-metric-item">
+                                <span class="comp-metric-label">RMSE</span>
+                                <span class="comp-metric-value" id="comp-xgb-rmse">N/A</span>
+                            </div>
+                            <div class="comp-metric-item">
+                                <span class="comp-metric-label">R² Score</span>
+                                <span class="comp-metric-value" id="comp-xgb-r2">N/A</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Charts Comparison -->
@@ -964,7 +1029,7 @@
 
                 <div class="chart-card">
                     <div class="chart-header">
-                        <h3>Feature Importance (Random Forest)</h3>
+                        <h3 id="feature-importance-title">Feature Importance (Random Forest)</h3>
                     </div>
                     <div class="chart-body">
                         <canvas id="chart-feature-importance"></canvas>
@@ -975,7 +1040,7 @@
             <!-- Actual vs Predicted Both Models -->
             <div class="card">
                 <div class="chart-header" style="padding:20px 24px 0;">
-                    <h3>Aktual vs Prediksi — Kedua Model</h3>
+                    <h3>Aktual vs Prediksi — Semua Model</h3>
                 </div>
                 <div class="chart-body" style="padding:16px 24px 24px;">
                     <canvas id="chart-comparison-avp"></canvas>
@@ -1018,6 +1083,12 @@
                         <div class="comp-result-item rf-result">
                             <span class="comp-result-label">Random Forest</span>
                             <span class="comp-result-value" id="comp-pred-rf">—</span>
+                            <span class="comp-result-unit">% GDP Growth</span>
+                        </div>
+                        <div class="comp-result-vs">VS</div>
+                        <div class="comp-result-item xgb-result">
+                            <span class="comp-result-label">XGBoost</span>
+                            <span class="comp-result-value" id="comp-pred-xgb">N/A</span>
                             <span class="comp-result-unit">% GDP Growth</span>
                         </div>
                     </div>
@@ -1202,7 +1273,7 @@
                         </div>
                     </div>
 
-                    <!-- Correlations + Distribution: 2-col ~280px -->
+                    <!-- Correlations + Distribution: 2-col -->
                     <div class="infog-two-col">
                         <div class="infog-section infog-section-compact">
                             <h2 class="infog-section-title"><i data-lucide="link"></i> Top Korelasi</h2>
@@ -1210,17 +1281,16 @@
                         </div>
                         <div class="infog-section infog-section-compact">
                             <h2 class="infog-section-title"><i data-lucide="bar-chart"></i> Distribusi Target</h2>
-                            <div class="infog-chart-container" style="height: 160px;">
+                            <div class="infog-chart-container">
                                 <canvas id="infog-chart-hist-2"></canvas>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Narrative & Insight: fills remaining -->
-                    <div class="infog-two-col" style="flex: 1; min-height: 0;">
+                    <div class="infog-two-col">
                         <div class="infog-section infog-narrative-section infog-section-compact">
-                            <h2 class="infog-section-title"><i data-lucide="file-text"></i> Analisis Korelasi</h2>
-                            <div id="infog-l2-narratives" class="infog-narratives"></div>
+                            <h2 class="infog-section-title"><i data-lucide="calculator"></i> Statistik Deskriptif</h2>
+                            <div id="infog-l2-desc-stats" class="infog-desc-stats"></div>
                         </div>
                         <div class="infog-section infog-section-compact">
                             <h2 class="infog-section-title"><i data-lucide="lightbulb"></i> Strategi Bisnis</h2>
@@ -1253,27 +1323,26 @@
                         </div>
                     </div>
 
-                    <!-- Technical Charts: 2-col ~250px -->
+                    <!-- Technical Charts: 2-col -->
                     <div class="infog-two-col">
                         <div class="infog-section infog-section-compact">
                             <h2 class="infog-section-title"><i data-lucide="bar-chart-3"></i> Feature Importance</h2>
-                            <div class="infog-chart-container" style="height: 150px;">
+                            <div class="infog-chart-container">
                                 <canvas id="infog-chart-importance-3"></canvas>
                             </div>
                         </div>
                         <div class="infog-section infog-section-compact">
                             <h2 class="infog-section-title"><i data-lucide="scatter-chart"></i> Fitur vs Target</h2>
-                            <div class="infog-chart-container" style="height: 150px;">
+                            <div class="infog-chart-container">
                                 <canvas id="infog-chart-scatter-3"></canvas>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Narrative & Insight: fills remaining -->
-                    <div class="infog-two-col" style="flex: 1; min-height: 0;">
+                    <div class="infog-two-col">
                         <div class="infog-section infog-narrative-section infog-section-compact">
-                            <h2 class="infog-section-title"><i data-lucide="file-text"></i> Evaluasi Model</h2>
-                            <div id="infog-l3-narratives" class="infog-narratives"></div>
+                            <h2 class="infog-section-title"><i data-lucide="calculator"></i> Statistik Deskriptif</h2>
+                            <div id="infog-l3-desc-stats" class="infog-desc-stats"></div>
                         </div>
                         <div class="infog-section infog-section-compact">
                             <h2 class="infog-section-title"><i data-lucide="lightbulb"></i> Rekomendasi Teknis</h2>
@@ -1310,7 +1379,7 @@
     </div>
 
     <!-- Custom JavaScript -->
-    <script src="/static/js/app.js?v=2.4"></script>
+    <script src="/static/js/app.js?v=2.6"></script>
 </body>
 </html>
 

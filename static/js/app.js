@@ -35,6 +35,21 @@ let chartEdaDist = null;
 let chartEdaScatter = null;
 let edaDataCache = null;
 
+const MODEL_LABELS = {
+  linear_regression: 'Linear Regression',
+  random_forest: 'Random Forest',
+  xgboost: 'XGBoost'
+};
+
+function metricValue(value, fallback = 'N/A') {
+  return value === null || value === undefined || Number.isNaN(Number(value)) ? fallback : value;
+}
+
+function getXgbMetrics(metrics) {
+  const xgb = metrics?.xgb || metrics?.xgboost || {};
+  return xgb && xgb.available === false ? null : xgb;
+}
+
 // ---- Chart.js Global Config ----
 Chart.defaults.color = '#94a3b8';
 Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
@@ -140,6 +155,9 @@ async function loadDashboard() {
       document.getElementById('val-total-data').textContent = m.total_data ?? '—';
       document.getElementById('val-train-test').textContent =
         m.train_size && m.test_size ? `Train: ${m.train_size} | Test: ${m.test_size}` : '—';
+      const xgbMetrics = getXgbMetrics(m);
+      document.getElementById('val-xgb-r2').textContent = metricValue(xgbMetrics?.r2_score);
+      document.getElementById('val-xgb-status').textContent = xgbMetrics?.r2_score !== undefined ? 'Aktif' : 'N/A';
       document.getElementById('dashboard-timestamp').textContent = dashRes.timestamp || '';
       
       const bestModelBadge = document.getElementById('dashboard-best-model-badge');
@@ -636,27 +654,28 @@ async function loadModelInfo() {
     const res = await fetchAPI(API.modelInfo + '?type=' + modelType);
     if (res.status !== 'success') return;
     const data = res.data;
+    const unavailable = data.available === false || data.error;
 
     // Overview cards
-    document.getElementById('info-model-type').textContent = data.model_type;
-    document.getElementById('info-library').textContent = data.library;
-    document.getElementById('info-scaler').textContent = data.scaler;
-    document.getElementById('info-split').textContent = `${data.train_split} / ${data.test_split}`;
+    document.getElementById('info-model-type').textContent = data.model_type || MODEL_LABELS[modelType];
+    document.getElementById('info-library').textContent = data.library || 'N/A';
+    document.getElementById('info-scaler').textContent = data.scaler || 'N/A';
+    document.getElementById('info-split').textContent = data.train_split && data.test_split ? `${data.train_split} / ${data.test_split}` : 'N/A';
 
     // Metrics bars
-    const mae = data.metrics.mae;
-    const mse = data.metrics.mse;
-    const r2 = data.metrics.r2_score;
+    const mae = data.metrics?.mae;
+    const mse = data.metrics?.mse;
+    const r2 = data.metrics?.r2_score;
 
-    document.getElementById('metric-mae-val').textContent = mae;
-    document.getElementById('metric-mse-val').textContent = mse;
-    document.getElementById('metric-r2-val').textContent = r2;
+    document.getElementById('metric-mae-val').textContent = metricValue(mae);
+    document.getElementById('metric-mse-val').textContent = metricValue(mse);
+    document.getElementById('metric-r2-val').textContent = metricValue(r2);
 
     // Bar fills (normalize for visual)
     setTimeout(() => {
-      document.getElementById('bar-mae').style.width = Math.min(100, mae * 20) + '%';
-      document.getElementById('bar-mse').style.width = Math.min(100, mse * 10) + '%';
-      document.getElementById('bar-r2').style.width = Math.max(0, r2 * 100) + '%';
+      document.getElementById('bar-mae').style.width = mae !== undefined ? Math.min(100, mae * 20) + '%' : '0%';
+      document.getElementById('bar-mse').style.width = mse !== undefined ? Math.min(100, mse * 10) + '%' : '0%';
+      document.getElementById('bar-r2').style.width = r2 !== undefined ? Math.max(0, r2 * 100) + '%' : '0%';
     }, 200);
 
     // Intercept (only for LR)
@@ -669,20 +688,32 @@ async function loadModelInfo() {
     }
 
     // Actual vs Predicted chart
-    renderActualVsPredChart(data.actual_vs_predicted);
+    if (data.actual_vs_predicted) renderActualVsPredChart(data.actual_vs_predicted);
+    else if (chartActualVsPred) {
+      chartActualVsPred.destroy();
+      chartActualVsPred = null;
+    }
 
     // Toggle description content and chart title
     const descLr = document.getElementById('desc-lr');
     const descRf = document.getElementById('desc-rf');
+    const descXgb = document.getElementById('desc-xgb');
     const chartTitle = document.getElementById('coef-chart-title');
 
     if (modelType === 'random_forest') {
       if (descLr) descLr.style.display = 'none';
       if (descRf) descRf.style.display = 'block';
+      if (descXgb) descXgb.style.display = 'none';
       if (chartTitle) chartTitle.textContent = 'Feature Importance (Tingkat Kepentingan)';
+    } else if (modelType === 'xgboost') {
+      if (descLr) descLr.style.display = 'none';
+      if (descRf) descRf.style.display = 'none';
+      if (descXgb) descXgb.style.display = 'block';
+      if (chartTitle) chartTitle.textContent = unavailable ? 'XGBoost belum tersedia' : 'Feature Importance XGBoost';
     } else {
       if (descLr) descLr.style.display = 'block';
       if (descRf) descRf.style.display = 'none';
+      if (descXgb) descXgb.style.display = 'none';
       if (chartTitle) chartTitle.textContent = 'Koefisien Model (Bobot Fitur)';
     }
 
@@ -691,7 +722,12 @@ async function loadModelInfo() {
       renderCoefficientsChart(data.coefficients);
     } else if (data.feature_importance) {
       renderCoefficientsChart(data.feature_importance);
+    } else if (chartCoefficients) {
+      chartCoefficients.destroy();
+      chartCoefficients = null;
     }
+
+    if (unavailable) showToast(data.error || 'XGBoost belum tersedia di server', 'info');
 
   } catch (err) {
     console.error('Model info error:', err);
@@ -1159,30 +1195,57 @@ async function loadComparison() {
     document.getElementById('comp-rf-rmse').textContent = rf.rmse;
     document.getElementById('comp-rf-r2').textContent = rf.r2_score;
 
+    // XGBoost metrics
+    const xgbBlock = d.xgboost || d.xgb || {};
+    const xgbAvailable = xgbBlock.available !== false && xgbBlock.metrics && Object.keys(xgbBlock.metrics).length > 0;
+    const xgb = xgbAvailable ? xgbBlock.metrics : null;
+    document.getElementById('comp-xgb-mae').textContent = metricValue(xgb?.mae);
+    document.getElementById('comp-xgb-rmse').textContent = metricValue(xgb?.rmse);
+    document.getElementById('comp-xgb-r2').textContent = metricValue(xgb?.r2_score);
+
     // Badges & winner highlight
     const lrCard = document.getElementById('comp-card-lr');
     const rfCard = document.getElementById('comp-card-rf');
+    const xgbCard = document.getElementById('comp-card-xgb');
     lrCard.classList.remove('winner');
     rfCard.classList.remove('winner');
+    xgbCard.classList.remove('winner');
+    ['badge-lr', 'badge-rf', 'badge-xgb'].forEach(id => {
+      const badge = document.getElementById(id);
+      badge.textContent = '';
+      badge.style.background = '';
+      badge.style.color = '';
+    });
 
-    if (d.best_model === 'Random Forest') {
+    if (d.best_model === 'XGBoost' && xgbAvailable) {
+      xgbCard.classList.add('winner');
+      document.getElementById('badge-xgb').textContent = 'Best';
+      document.getElementById('badge-xgb').style.background = 'rgba(245,158,11,0.2)';
+      document.getElementById('badge-xgb').style.color = '#f59e0b';
+    } else if (d.best_model === 'Random Forest') {
       rfCard.classList.add('winner');
       document.getElementById('badge-rf').textContent = 'Best';
       document.getElementById('badge-rf').style.background = 'rgba(245,158,11,0.2)';
       document.getElementById('badge-rf').style.color = '#f59e0b';
-      document.getElementById('badge-lr').textContent = '';
     } else {
       lrCard.classList.add('winner');
       document.getElementById('badge-lr').textContent = 'Best';
       document.getElementById('badge-lr').style.background = 'rgba(245,158,11,0.2)';
       document.getElementById('badge-lr').style.color = '#f59e0b';
-      document.getElementById('badge-rf').textContent = '';
     }
+    if (!xgbAvailable) document.getElementById('badge-xgb').textContent = 'N/A';
 
     // Charts
-    renderCompMetricsChart(lr, rf);
-    renderFeatureImportanceChart(d.random_forest.feature_importance);
-    renderCompAVPChart(d.linear_regression.actual_vs_predicted, d.random_forest.actual_vs_predicted);
+    renderCompMetricsChart(lr, rf, xgb);
+    const importanceTitle = document.getElementById('feature-importance-title');
+    const importanceSource = xgbAvailable && d.xgboost?.feature_importance ? d.xgboost.feature_importance : d.random_forest.feature_importance;
+    if (importanceTitle) importanceTitle.textContent = xgbAvailable ? 'Feature Importance (XGBoost)' : 'Feature Importance (Random Forest)';
+    renderFeatureImportanceChart(importanceSource || {});
+    renderCompAVPChart(
+      d.linear_regression.actual_vs_predicted,
+      d.random_forest.actual_vs_predicted,
+      xgbAvailable ? d.xgboost.actual_vs_predicted : null
+    );
 
     lucide.createIcons();
   } catch (err) {
@@ -1191,29 +1254,40 @@ async function loadComparison() {
   }
 }
 
-function renderCompMetricsChart(lr, rf) {
+function renderCompMetricsChart(lr, rf, xgb = null) {
   const ctx = document.getElementById('chart-comparison-metrics');
   if (!ctx) return;
   if (chartCompMetrics) chartCompMetrics.destroy();
+
+  const datasets = [
+    {
+      label: 'Linear Regression',
+      data: [lr.mae, lr.rmse, Math.max(0, lr.r2_score)],
+      backgroundColor: 'rgba(59,130,246,0.7)',
+      borderRadius: 8
+    },
+    {
+      label: 'Random Forest',
+      data: [rf.mae, rf.rmse, Math.max(0, rf.r2_score)],
+      backgroundColor: 'rgba(20,184,166,0.7)',
+      borderRadius: 8
+    }
+  ];
+
+  if (xgb) {
+    datasets.push({
+      label: 'XGBoost',
+      data: [xgb.mae, xgb.rmse, Math.max(0, xgb.r2_score)],
+      backgroundColor: 'rgba(245,158,11,0.75)',
+      borderRadius: 8
+    });
+  }
 
   chartCompMetrics = new Chart(ctx, {
     type: 'bar',
     data: {
       labels: ['MAE', 'RMSE', 'R² Score'],
-      datasets: [
-        {
-          label: 'Linear Regression',
-          data: [lr.mae, lr.rmse, Math.max(0, lr.r2_score)],
-          backgroundColor: 'rgba(59,130,246,0.7)',
-          borderRadius: 8
-        },
-        {
-          label: 'Random Forest',
-          data: [rf.mae, rf.rmse, Math.max(0, rf.r2_score)],
-          backgroundColor: 'rgba(20,184,166,0.7)',
-          borderRadius: 8
-        }
-      ]
+      datasets
     },
     options: { animation: false,
       responsive: true, maintainAspectRatio: false,
@@ -1267,22 +1341,27 @@ function renderFeatureImportanceChart(importance) {
   });
 }
 
-function renderCompAVPChart(lrAVP, rfAVP) {
+function renderCompAVPChart(lrAVP, rfAVP, xgbAVP = null) {
   const ctx = document.getElementById('chart-comparison-avp');
   if (!ctx) return;
   if (chartCompAVP) chartCompAVP.destroy();
 
   const labels = lrAVP.actual.map((_, i) => `Test ${i + 1}`);
+  const datasets = [
+    { label: 'Aktual', data: lrAVP.actual, backgroundColor: 'rgba(148,163,184,0.5)', borderRadius: 6 },
+    { label: 'LR Prediksi', data: lrAVP.predicted, backgroundColor: 'rgba(59,130,246,0.7)', borderRadius: 6 },
+    { label: 'RF Prediksi', data: rfAVP.predicted, backgroundColor: 'rgba(20,184,166,0.7)', borderRadius: 6 }
+  ];
+
+  if (xgbAVP) {
+    datasets.push({ label: 'XGBoost Prediksi', data: xgbAVP.predicted, backgroundColor: 'rgba(245,158,11,0.75)', borderRadius: 6 });
+  }
 
   chartCompAVP = new Chart(ctx, {
     type: 'bar',
     data: {
       labels,
-      datasets: [
-        { label: 'Aktual', data: lrAVP.actual, backgroundColor: 'rgba(148,163,184,0.5)', borderRadius: 6 },
-        { label: 'LR Prediksi', data: lrAVP.predicted, backgroundColor: 'rgba(59,130,246,0.7)', borderRadius: 6 },
-        { label: 'RF Prediksi', data: rfAVP.predicted, backgroundColor: 'rgba(20,184,166,0.7)', borderRadius: 6 }
-      ]
+      datasets
     },
     options: { animation: false,
       responsive: true, maintainAspectRatio: false,
@@ -1318,6 +1397,7 @@ function initCompareForm() {
 
         document.getElementById('comp-pred-lr').textContent = d.linear_regression.prediction;
         document.getElementById('comp-pred-rf').textContent = d.random_forest.prediction;
+        document.getElementById('comp-pred-xgb').textContent = d.xgboost?.prediction ?? 'N/A';
         document.getElementById('comp-best-text').textContent =
           `Model Terbaik: ${d.best_model} (Prediksi: ${d.best_prediction}%)`;
 
@@ -1944,6 +2024,11 @@ function applyInfographicAccentColor(color) {
     el.style.background = `linear-gradient(135deg, ${color}, ${color}cc)`;
   });
 
+  // Descriptive Stats left borders
+  canvas.querySelectorAll('.infog-desc-item').forEach(el => {
+    el.style.borderLeftColor = color;
+  });
+
   // Footer branding
   const footerStrong = canvas.querySelector('.infog-footer strong');
   if (footerStrong) footerStrong.style.color = color;
@@ -2093,25 +2178,53 @@ async function loadInfographic() {
     document.getElementById('infog-l1-narratives').innerHTML = buildNarrative(l1Narratives);
     document.getElementById('infog-l1-insights').innerHTML = buildInsight(0, 'Data menunjukkan pola musiman yang konsisten dengan pertumbuhan yang diprediksi akan stabil dalam kuartal mendatang.');
 
-    // Layout 2: Business Insight
-    const topFeature = topCorr[0] ? topCorr[0].feature : 'Beberapa fitur';
-    const topCorrVal = topCorr[0] ? topCorr[0].correlation : '';
-    const l2Narratives = [
-      `Distribusi <strong>${baseTarget}</strong> menunjukkan variasi yang dipengaruhi kuat oleh pergerakan matriks bisnis.`,
-      `Variabel <strong>${topFeature}</strong> teridentifikasi memiliki tingkat korelasi tertinggi (${topCorrVal}) yang patut dipantau oleh tim eksekutif.`
-    ];
-    document.getElementById('infog-l2-narratives').innerHTML = buildNarrative(l2Narratives);
-    document.getElementById('infog-l2-insights').innerHTML = buildInsight(1, 'Intervensi pada faktor-faktor dengan korelasi tertinggi dapat mempercepat pencapaian target efisiensi bisnis.');
-
-    // Layout 3: Technical Deep-Dive
-    const l3Narratives = [
-      `Evaluasi ketat membuktikan <strong>${baseModel}</strong> mengungguli baseline dengan tingkat Error minimal (RMSE: ${m.rmse}, MAE: ${m.mae}).`,
-      rawNarratives[2] || `Distribusi feature importance dan scatter residuals menunjukkan tidak adanya bias sistematis pada prediksi.`
-    ];
-    setText('infog-model-name-3', baseModel);
+    // Layout 2 & 3: Statistik Deskriptif (Replacing Narratives)
+    const descContainer2 = document.getElementById('infog-l2-desc-stats');
+    const descContainer3 = document.getElementById('infog-l3-desc-stats');
     
-    const l3NarrativesEl = document.getElementById('infog-l3-narratives');
-    if (l3NarrativesEl) l3NarrativesEl.innerHTML = buildNarrative(l3Narratives);
+    // Pick top 4 features from top_correlations, or fallback to first 4 features
+    let descFeatures = [];
+    if (topCorr && topCorr.length > 0) {
+      descFeatures = topCorr.slice(0, 4).map(c => c.feature);
+    } else {
+      descFeatures = d.overview.features ? d.overview.features.slice(0, 4) : [];
+    }
+
+    const descStatsData = d.eda_highlights?.descriptive_summary || [];
+    const descStatsHtml = descFeatures.map(feat => {
+      const stat = descStatsData.find(s => s.feature === feat) || {};
+      const mean = stat.mean !== undefined ? stat.mean : '-';
+      const min = stat.min !== undefined ? stat.min : '-';
+      const max = stat.max !== undefined ? stat.max : '-';
+      
+      return `
+        <div class="infog-desc-item">
+          <div class="infog-desc-feature" title="${feat}">${feat}</div>
+          <div class="infog-desc-metrics">
+            <div class="infog-desc-metric">
+              <span class="infog-desc-metric-label">Min</span>
+              <span class="infog-desc-metric-value">${min}</span>
+            </div>
+            <div class="infog-desc-metric">
+              <span class="infog-desc-metric-label">Mean</span>
+              <span class="infog-desc-metric-value">${mean}</span>
+            </div>
+            <div class="infog-desc-metric">
+              <span class="infog-desc-metric-label">Max</span>
+              <span class="infog-desc-metric-value">${max}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    if (descContainer2) descContainer2.innerHTML = descStatsHtml;
+    if (descContainer3) descContainer3.innerHTML = descStatsHtml;
+
+    // Layout 2 & 3: Insights
+    document.getElementById('infog-l2-insights').innerHTML = buildInsight(1, 'Intervensi pada faktor-faktor dengan korelasi tertinggi dapat mempercepat pencapaian target efisiensi bisnis.');
+    
+    setText('infog-model-name-3', baseModel);
     
     const l3InsightsEl = document.getElementById('infog-l3-insights');
     if (l3InsightsEl) l3InsightsEl.innerHTML = buildInsight(2, 'Model siap dideploy. Disarankan menjadwalkan retraining berkala jika terjadi data drift pada variabel independen utama.');

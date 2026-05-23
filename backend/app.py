@@ -31,7 +31,7 @@ from flask_cors import CORS
 
 # Tambahkan path backend ke sys.path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from ml_model import PredictiveModel
+from ml_model import PredictiveModel, XGBOOST_AVAILABLE
 
 # ---- Konfigurasi Flask ----
 app = Flask(
@@ -46,6 +46,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATASET_DIR = os.path.join(BASE_DIR, 'dataset')
 UPLOAD_DIR = os.path.join(BASE_DIR, 'uploads')
 DEFAULT_DATASET = os.path.join(DATASET_DIR, 'ekonomi_data.csv')
+VALID_MODEL_TYPES = ['linear_regression', 'random_forest', 'xgboost']
 
 # Buat folder uploads jika belum ada
 os.makedirs(UPLOAD_DIR, exist_ok=True)
@@ -63,6 +64,13 @@ if model.is_trained:
     print(f"  MAE: {lr_m['mae']}  |  RMSE: {lr_m['rmse']}  |  R2: {lr_m['r2_score']}")
     print(f"  --- Random Forest ---")
     print(f"  MAE: {rf_m['mae']}  |  RMSE: {rf_m['rmse']}  |  R2: {rf_m['r2_score']}")
+    if XGBOOST_AVAILABLE and model.xgb_metrics:
+        xgb_m = model.xgb_metrics
+        print(f"  --- XGBoost ---")
+        print(f"  MAE: {xgb_m['mae']}  |  RMSE: {xgb_m['rmse']}  |  R2: {xgb_m['r2_score']}")
+    else:
+        print("  --- XGBoost ---")
+        print("  Tidak tersedia atau belum dilatih")
 print("=" * 60)
 
 
@@ -134,6 +142,12 @@ def api_model_info():
     """
     try:
         model_type = request.args.get('type', 'linear_regression')
+        if model_type not in VALID_MODEL_TYPES:
+            return jsonify({
+                'status': 'error',
+                'message': f'model_type harus salah satu dari: {VALID_MODEL_TYPES}'
+            }), 400
+
         model_info = model.get_model_info(model_type=model_type)
         if model_info:
             return jsonify({'status': 'success', 'data': model_info})
@@ -272,6 +286,11 @@ def api_predict():
 
         # Ambil model_type lalu hapus dari input agar tidak masuk ke fitur
         model_type = input_data.pop('model_type', 'linear_regression')
+        if model_type not in VALID_MODEL_TYPES:
+            return jsonify({
+                'status': 'error',
+                'message': f'model_type harus salah satu dari: {VALID_MODEL_TYPES}'
+            }), 400
 
         # Validasi semua fitur ada
         missing = [f for f in model.feature_names if f not in input_data]
@@ -286,6 +305,8 @@ def api_predict():
         result = model.predict(input_data, model_type=model_type)
         return jsonify({'status': 'success', 'data': result})
 
+    except ValueError as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 400
     except Exception as e:
         return jsonify({'status': 'error', 'message': str(e)}), 500
 
@@ -531,11 +552,15 @@ def api_infographic_data():
                 'best_model': comparison['best_model'],
                 'lr_metrics': comparison['linear_regression']['metrics'],
                 'rf_metrics': comparison['random_forest']['metrics'],
+                'xgb_metrics': comparison.get('xgboost', {}).get('metrics', {}),
+                'xgb_available': comparison.get('xgboost', {}).get('available', False),
                 'summary': comparison['summary'],
             }
             # Include feature importance from RF
             if 'feature_importance' in comparison.get('random_forest', {}):
                 comparison_summary['feature_importance'] = comparison['random_forest']['feature_importance']
+            if 'feature_importance' in comparison.get('xgboost', {}):
+                comparison_summary['xgb_feature_importance'] = comparison['xgboost']['feature_importance']
 
         # --- 5. Trend Data (for sparkline/mini chart) ---
         trend = model.get_trend_data()

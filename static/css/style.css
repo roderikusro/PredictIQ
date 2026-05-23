@@ -549,7 +549,7 @@ input, select { font-family: inherit; }
 /* Comparison Grid */
 .comparison-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 24px;
   margin-bottom: 24px;
 }
@@ -575,6 +575,7 @@ input, select { font-family: inherit; }
 .comp-icon svg { width: 20px; height: 20px; color: #fff; }
 .comp-icon.blue { background: linear-gradient(135deg, #3b82f6, #6366f1); }
 .comp-icon.teal { background: linear-gradient(135deg, #14b8a6, #06b6d4); }
+.comp-icon.orange { background: linear-gradient(135deg, #f59e0b, #d97706); }
 
 .comp-desc {
   font-size: 0.85rem; color: var(--text-secondary);
@@ -601,7 +602,7 @@ input, select { font-family: inherit; }
 
 /* Comparison Result Grid */
 .comparison-result-grid {
-  display: flex; align-items: center; justify-content: center;
+  display: flex; align-items: center; justify-content: center; flex-wrap: wrap;
   gap: 32px; margin-bottom: 24px; padding: 20px 0;
 }
 .comp-result-item {
@@ -614,6 +615,7 @@ input, select { font-family: inherit; }
 .comp-result-item:hover { transform: scale(1.03); }
 .lr-result { border-top: 3px solid #3b82f6; }
 .rf-result { border-top: 3px solid #14b8a6; }
+.xgb-result { border-top: 3px solid #f59e0b; }
 
 .comp-result-label {
   display: block; font-size: 0.85rem; color: var(--text-secondary);
@@ -625,6 +627,7 @@ input, select { font-family: inherit; }
 }
 .lr-result .comp-result-value { color: #3b82f6; }
 .rf-result .comp-result-value { color: #14b8a6; }
+.xgb-result .comp-result-value { color: #f59e0b; }
 .comp-result-unit {
   display: block; font-size: 0.78rem; color: var(--text-secondary);
   margin-top: 6px;
@@ -839,6 +842,7 @@ input, select { font-family: inherit; }
   display: grid;
   grid-template-columns: 1fr 1fr;
   border-top: 1px solid rgba(255,255,255,0.04);
+  min-height: 0;
 }
 .infog-two-col .infog-section:first-child {
   border-right: 1px solid rgba(255,255,255,0.04);
@@ -978,7 +982,7 @@ input, select { font-family: inherit; }
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 12px;
 }
 .infog-trend-stat {
   text-align: center;
@@ -997,6 +1001,91 @@ input, select { font-family: inherit; }
 }
 .infog-chart-container {
   height: 160px; position: relative;
+}
+
+/* ---- Layout 2 specific balanced proportions ---- */
+#infog-layout-2 {
+  gap: 0;
+}
+#infog-layout-2 > .infog-section:first-child {
+  flex: 0 0 auto;
+}
+/* Korrelasi + Distribusi row — controlled height */
+#infog-layout-2 > .infog-two-col:nth-child(2) {
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: 260px;
+}
+#infog-layout-2 > .infog-two-col:nth-child(2) .infog-section {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#infog-layout-2 > .infog-two-col:nth-child(2) .infog-corr-list {
+  flex: 1;
+  overflow: hidden;
+}
+#infog-layout-2 > .infog-two-col:nth-child(2) .infog-chart-container {
+  flex: 1;
+  height: auto;
+  min-height: 120px;
+}
+/* Narrative + Insight row — fills remaining */
+#infog-layout-2 > .infog-two-col:last-child {
+  flex: 1 1 0;
+  min-height: 0;
+}
+#infog-layout-2 > .infog-two-col:last-child .infog-section {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#infog-layout-2 > .infog-two-col:last-child .infog-narratives,
+#infog-layout-2 > .infog-two-col:last-child .infog-desc-stats,
+#infog-layout-2 > .infog-two-col:last-child .infog-insight-cards {
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ---- Layout 3 specific balanced proportions ---- */
+#infog-layout-3 {
+  gap: 0;
+}
+#infog-layout-3 > .infog-section:first-child {
+  flex: 0 0 auto;
+}
+/* Feature Importance + Fitur vs Target row — equal controlled height */
+#infog-layout-3 > .infog-two-col:nth-child(2) {
+  flex: 0 0 auto;
+  min-height: 0;
+  max-height: 280px;
+}
+#infog-layout-3 > .infog-two-col:nth-child(2) .infog-section {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#infog-layout-3 > .infog-two-col:nth-child(2) .infog-chart-container {
+  flex: 1;
+  height: auto;
+  min-height: 140px;
+  max-height: 220px;
+}
+/* Evaluasi + Rekomendasi row — fills remaining */
+#infog-layout-3 > .infog-two-col:last-child {
+  flex: 1 1 0;
+  min-height: 0;
+}
+#infog-layout-3 > .infog-two-col:last-child .infog-section {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+#infog-layout-3 > .infog-two-col:last-child .infog-narratives,
+#infog-layout-3 > .infog-two-col:last-child .infog-desc-stats,
+#infog-layout-3 > .infog-two-col:last-child .infog-insight-cards {
+  flex: 1;
+  overflow: hidden;
 }
 
 /* Correlation List */
@@ -1062,6 +1151,51 @@ input, select { font-family: inherit; }
   display: flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 800; color: #fff;
   flex-shrink: 0;
+}
+
+/* Descriptive Stats List */
+.infog-desc-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.infog-desc-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.02);
+  border-left: 3px solid #8b5cf6;
+  border-radius: 8px;
+  font-size: 11px;
+}
+.infog-desc-feature {
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+.infog-desc-metrics {
+  display: flex;
+  gap: 12px;
+}
+.infog-desc-metric {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+.infog-desc-metric-label {
+  font-size: 9px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.infog-desc-metric-value {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-family: 'Inter', monospace;
 }
 
 /* Insight Cards */
@@ -1412,7 +1546,8 @@ input, select { font-family: inherit; }
 }
 
 /* Specific fix for narrative section background to match main bg slightly */
-.infographic-canvas[style*="--infog-bg"] .infog-narrative-section {
+.infographic-canvas[style*="--infog-bg"] .infog-narrative-section,
+.infographic-canvas[style*="--infog-bg"] .infog-desc-stats {
   background: transparent !important;
 }
 
@@ -1444,6 +1579,7 @@ input, select { font-family: inherit; }
 .infographic-canvas[style*="--infog-text"] .infog-metric-big,
 .infographic-canvas[style*="--infog-text"] .infog-insight-icon,
 .infographic-canvas[style*="--infog-text"] .infog-logo-icon i,
-.infographic-canvas[style*="--infog-text"] .infog-narrative-num {
+.infographic-canvas[style*="--infog-text"] .infog-narrative-num,
+.infographic-canvas[style*="--infog-text"] .infog-desc-metric-value {
   color: inherit !important;
 }
