@@ -19,18 +19,23 @@ graph TD
     
     E --> G(Pelatihan Linear Regression)
     E --> H(Pelatihan Random Forest)
+    E --> H2(Pelatihan XGBoost)
     
     F --> I(Prediksi Data Uji LR)
     F --> J(Prediksi Data Uji RF)
+    F --> J2(Prediksi Data Uji XGB)
     
     G --> I
     H --> J
+    H2 --> J2
     
     I --> K[Evaluasi Metrik: MAE, MSE, RMSE, R²]
     J --> L[Evaluasi Metrik: MAE, MSE, RMSE, R²]
+    J2 --> L2[Evaluasi Metrik: MAE, MSE, RMSE, R²]
     
     K --> M{Pemilihan Best Model}
     L --> M
+    L2 --> M
     
     M --> N[Forecast Reliability Assessment]
     N --> O[Target Guardrails Calculation]
@@ -67,13 +72,13 @@ $$
 z = \frac{x - \mu}{\sigma}
 $$
 
-Di mana $x$ adalah nilai asli, $\mu$ adalah rata-rata (mean), dan $\sigma$ adalah standar deviasi. Hasilnya, setiap fitur akan terpusat di angka 0 dengan standar deviasi 1. Masing-masing model (Linear Regression dan Random Forest) memiliki instance Scaler-nya sendiri agar tidak terjadi kebocoran data (*Data Leakage*).
+Di mana $x$ adalah nilai asli, $\mu$ adalah rata-rata (mean), dan $\sigma$ adalah standar deviasi. Hasilnya, setiap fitur akan terpusat di angka 0 dengan standar deviasi 1. Masing-masing model (Linear Regression, Random Forest, dan XGBoost) memiliki instance Scaler-nya sendiri agar tidak terjadi kebocoran data (*Data Leakage*).
 
 ---
 
 ## 3. Model Machine Learning
 
-Sistem ini menjalankan **dua algoritma** Regresi secara simultan (bersamaan) lalu membandingkan efisiensi hasil pemodelannya.
+Sistem ini menjalankan **tiga algoritma** Regresi secara simultan (bersamaan) lalu membandingkan efisiensi hasil pemodelannya.
 
 ### 3.1 Linear Regression (Regresi Linear Berganda)
 Model parametrik klasik yang mencari garis (atau bidang/hyperplane) lurus paling optimal (Ordinary Least Squares) untuk meminimalkan selisih jarak (*residuals*) antara prediksi dan aktual.
@@ -97,6 +102,19 @@ Algoritma berbasis Ansambel (*Ensemble Learning*) berjenis pembagian (*bagging*)
   - `random_state = 42`: Seed untuk reprodusibilitas hasil.
   - `n_jobs = -1`: Menggunakan seluruh core CPU untuk pelatihan paralel.
 - **Kelebihan dalam Statistika:** Mampu mengenali interaksi non-linear (misalnya: korelasi suku bunga terhadap inflasi tidak selalu lurus), serta secara intrinsik tangguh terhadap bahaya pencilan (*outliers*).
+
+### 3.3 XGBoost Regressor
+Algoritma berbasis *Gradient Boosting* yang membangun serangkaian pohon keputusan secara sekuensial, di mana setiap pohon berusaha memperbaiki kesalahan dari pohon sebelumnya. Sistem mendukung fallback ke `GradientBoostingRegressor` dari `scikit-learn` jika library `xgboost` tidak tersedia di *environment*.
+
+- **Hyperparameter Tuning:**
+  - `n_estimators = 200`: Membangun 200 pohon berurutan.
+  - `max_depth = 4`: Kedalaman setiap pohon dibatasi 4 untuk mencegah *overfitting*.
+  - `learning_rate = 0.05`: Menurunkan bobot setiap pohon untuk membuat model lebih konvergen secara bertahap.
+  - `subsample = 0.8`: Mengambil 80% data latih secara acak untuk melatih setiap pohon.
+  - `colsample_bytree = 0.8`: Mengambil 80% fitur secara acak untuk setiap pohon.
+  - `reg_alpha = 0.1` & `reg_lambda = 1.0`: Regularisasi L1 (Lasso) dan L2 (Ridge) untuk mengurangi kompleksitas model.
+  - `early_stopping_rounds = 20`: Pelatihan akan dihentikan jika performa pada data uji tidak membaik selama 20 ronde beruntun (untuk mencegah *overfitting*).
+- **Kelebihan dalam Statistika:** Sangat handal untuk dataset tabular kompleks dengan regularisasi *built-in* dan kemampuan konvergensi tinggi berkat algoritma optimalisasi *gradient descent*. Evaluasi metrik juga mengekstrak iterasi optimal `best_iteration`.
 
 ---
 
@@ -246,33 +264,42 @@ Ketika *user* mengirim permintaan prediksi melalui endpoint gabungan (`/api/pred
 graph TD
     A[Terima Input Pengguna] --> B(Jalankan Prediksi LR)
     A --> C(Jalankan Prediksi RF)
+    A --> C2(Jalankan Prediksi XGB)
     
-    B --> D[Bandingkan Nilai R-Squared]
+    B --> D[Bandingkan Nilai R-Squared Semua Model]
     C --> D
+    C2 --> D
     
-    D -->|R² RF > LR| E[Pilih Random Forest]
-    D -->|R² LR > RF| F[Pilih Linear Regression]
+    D --> E[Pilih Model Terbaik berdasarkan R² Tertinggi]
     
-    E --> G[Sajikan Prediksi Utama & Ekstrak Feature Importance Gini]
-    F --> G
+    E --> G[Sajikan Prediksi Utama & Ekstrak Feature Importance jika Ensemble]
     
     G --> H[Generate 4 Kategori Insight Otomatis]
 ```
 
-1. Jika $R^2_{Random Forest} > R^2_{Linear Regression}$, maka mesin menyimpulkan Random Forest yang paling unggul (atau sebaliknya).
+1. Algoritma membandingkan $R^2$ dari Linear Regression, Random Forest, dan XGBoost (jika tersedia), lalu menyimpulkan model mana yang paling unggul.
 2. Prediksi akhir yang disarankan ke layar pengguna adalah murni keluaran dari *Best Model* tersebut.
-3. Nilai *Feature Importance* (Tingkat Kepentingan Variabel) akan secara eksklusif dicabut dari hitungan *Gini Impurity* pada cabang algoritma Random Forest karena umumnya lebih akurat merepresentasikan peta kausalitas non-linier dibandingkan hanya bersandar pada bobot koefisien linear.
+3. Nilai *Feature Importance* (Tingkat Kepentingan Variabel) akan dicabut secara eksklusif dari model ansambel (Random Forest atau XGBoost) karena umumnya lebih akurat merepresentasikan peta kausalitas non-linier dibandingkan hanya bersandar pada bobot koefisien linear.
 
 ### 7.1 Insight Otomatis pada Perbandingan Model
 Fungsi `_generate_insight()` menghasilkan **4 kategori insight** secara otomatis:
 
 1. **Insight Best Model:** Menjelaskan model mana yang unggul berdasarkan R² Score.
 2. **Insight Konsistensi Prediksi:**
-   - Selisih < 0.5%: *"Kedua model menghasilkan prediksi yang sangat mirip"*
-   - Selisih 0.5–1.5%: *"Terdapat perbedaan moderat"*
-   - Selisih > 1.5%: *"Perbedaan prediksi cukup signifikan"*
-3. **Insight MAE:** Perbandingan error absolut kedua model.
-4. **Insight Interpretasi Ekonomi:**
+   - **Tiga Model:**
+     - Spread < 0.3%: *"Ketiga model sangat konsisten dengan spread prediksi di bawah 0.3%."*
+     - Spread < 1.0%: *"Terdapat variasi moderat antar model dengan spread {X}%."*
+     - Spread > 1.0%: *"Perbedaan signifikan antar model dengan spread {X}%."*
+   - **Dua Model (Jika XGBoost tidak tersedia):**
+     - Selisih < 0.5%: *"Kedua model menghasilkan prediksi yang sangat mirip"*
+     - Selisih 0.5–1.5%: *"Terdapat perbedaan moderat"*
+     - Selisih > 1.5%: *"Perbedaan prediksi cukup signifikan"*
+3. **Insight MAE:** Menentukan model mana yang memiliki error absolut terendah di antara semua kandidat.
+4. **Insight Perbedaan Pola Model Ensemble:**
+   - Membandingkan hasil prediksi XGBoost dan Random Forest:
+     - Jika selisih < 0.2%: *"hasil hampir identik"*
+     - Jika selisih > 0.2%: *"ada perbedaan pola non-linear"*
+5. **Insight Interpretasi Ekonomi:**
    - Rata-rata prediksi > 5%: *"Pertumbuhan ekonomi yang kuat"*
    - 3–5%: *"Pertumbuhan ekonomi moderat"*
    - 0–3%: *"Pertumbuhan ekonomi lambat"*
@@ -283,6 +310,7 @@ Ketika user menggunakan satu model saja (`/api/predict`), sistem tetap menghasil
 
 - **Linear Regression:** Menganalisis kontribusi setiap fitur (scaled input × koefisien), mengurutkan dari kontribusi terbesar, lalu mengidentifikasi *main driver* (pendorong positif) dan *main risk* (penahan negatif).
 - **Random Forest:** Menggunakan `feature_importances_` (Gini Impurity) untuk mengidentifikasi fitur paling krusial.
+- **XGBoost:** Menggunakan `feature_importances_` (Gain/Importance tertinggi) untuk mengidentifikasi fitur paling krusial.
 
 ---
 
@@ -433,12 +461,12 @@ Sistem menyediakan ringkasan perbandingan terstruktur melalui endpoint `/api/mod
 
 | Metrik | Pembanding | Output |
 |--------|-----------|--------|
-| R² Score | LR vs RF | Pemenang + selisih absolut |
-| MAE | LR vs RF | Pemenang + selisih absolut |
-| RMSE | LR vs RF | Pemenang + selisih absolut |
+| R² Score | LR vs RF vs XGB | Pemenang + selisih absolut min/max |
+| MAE | LR vs RF vs XGB | Pemenang + selisih absolut min/max |
+| RMSE | LR vs RF vs XGB | Pemenang + selisih absolut min/max |
 | **Best Model** | Berdasarkan R² tertinggi | Nama model terbaik |
 
-Data perbandingan juga mencakup array `actual_vs_predicted` untuk kedua model, memungkinkan visualisasi scatter plot pada frontend.
+Data perbandingan juga mencakup array `actual_vs_predicted` untuk semua model, memungkinkan visualisasi scatter plot pada frontend.
 
 ---
 
@@ -450,6 +478,6 @@ Endpoint `/api/infographic-data` mengumpulkan seluruh data dari dashboard, EDA, 
 2. **Narasi Performa Model:** Level performa (sangat baik / baik / cukup / perlu ditingkatkan) berdasarkan R² Score, beserta nilai MAE dan RMSE.
 3. **Narasi Tren:** Arah perubahan terbaru (naik / turun / stabil) berdasarkan dua observasi terakhir.
 4. **Narasi Forecast:** Insight dari hasil auto-forecast.
-5. **Narasi Fitur Kunci:** Top 3 fitur berpengaruh berdasarkan Feature Importance Random Forest.
+5. **Narasi Fitur Kunci:** Top 3 fitur berpengaruh berdasarkan Feature Importance dari Random Forest atau XGBoost (bergantung pada ketersediaan).
 
 Melalui kombinasi semua mekanisme di atas, sistem PredictIQ memberikan prediksi yang dinamis, terkalibrasi, dan disertai konteks statistik yang lengkap untuk mendukung pengambilan keputusan berbasis data.

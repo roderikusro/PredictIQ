@@ -6,7 +6,7 @@
 
 > **Versi:** 2.0  
 > **Tanggal:** 25 Mei 2026  
-> **Tech Stack:** Python Flask + scikit-learn + Chart.js
+> **Tech Stack:** Python Flask + scikit-learn + xgboost + Chart.js
 
 ---
 
@@ -27,11 +27,11 @@ Dokumentasi ini terbagi dalam 5 bagian:
 ## 🔍 Ringkasan Cepat
 
 **Apa ini?**  
-Aplikasi web untuk memprediksi data ekonomi Indonesia menggunakan Linear Regression dan Random Forest, dilengkapi Exploratory Data Analysis (EDA), auto-forecast multi-step, dan infografis otomatis.
+Aplikasi web untuk memprediksi data ekonomi Indonesia menggunakan Linear Regression, Random Forest, dan XGBoost, dilengkapi Exploratory Data Analysis (EDA), auto-forecast multi-step, dan infografis otomatis.
 
 **Bagaimana cara kerjanya?**
 1. Dataset CSV/Excel dimuat dan dibersihkan secara otomatis (format angka Indonesia/US, imputasi median)
-2. Dua model ML dilatih secara paralel (LR + RF) dengan StandardScaler terpisah
+2. Tiga model ML dilatih secara paralel (LR + RF + XGBoost) dengan StandardScaler terpisah
 3. User memasukkan parameter ekonomi via form dinamis atau menggunakan auto-forecast
 4. Sistem memberikan prediksi + insight otomatis + forecast reliability assessment
 5. Blended Forecast menggabungkan prediksi model terbaik dengan baseline historis (bobot adaptif berdasarkan R² dan Relative MAE)
@@ -39,7 +39,7 @@ Aplikasi web untuk memprediksi data ekonomi Indonesia menggunakan Linear Regress
 
 **Komponen utama:**
 - `backend/app.py` — Flask API server (16 endpoints)
-- `backend/ml_model.py` — Engine ML (class `PredictiveModel`, 1144 baris)
+- `backend/ml_model.py` — Engine ML (class `PredictiveModel`, 1358 baris)
 - `templates/index.html` — SPA frontend
 - `static/js/app.js` — Logika frontend
 - `static/css/style.css` — Dark mode UI dengan glassmorphism
@@ -56,8 +56,8 @@ Aplikasi web untuk memprediksi data ekonomi Indonesia menggunakan Linear Regress
 | 6 | GET | `/api/eda` | Exploratory Data Analysis (korelasi, outlier, skewness, insight) |
 | 7 | GET | `/api/export-eda` | Export statistik deskriptif EDA (CSV/Excel) |
 | 8 | GET | `/api/trend` | Data tren + auto-forecast untuk grafik |
-| 9 | POST | `/api/predict` | Prediksi single model (LR atau RF) |
-| 10 | POST | `/api/predict-compare` | Prediksi perbandingan kedua model + insight |
+| 9 | POST | `/api/predict` | Prediksi single model (LR, RF, atau XGBoost) |
+| 10 | POST | `/api/predict-compare` | Prediksi perbandingan ketiga model + insight |
 | 11 | GET | `/api/history` | Riwayat semua prediksi |
 | 12 | POST | `/api/upload-csv` | Upload dataset CSV/Excel baru |
 | 13 | POST | `/api/configure-model` | Konfigurasi ulang target, fitur, dan kolom waktu |
