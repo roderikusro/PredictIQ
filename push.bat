@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 echo ============================================
-echo   Projek Akhir BPS - Push Update ke GitHub
+echo   Statisy - Push Update ke GitHub
 echo ============================================
 echo.
 
@@ -21,7 +21,7 @@ git push origin main
 echo.
 echo ============================================
 echo   Push berhasil!
-echo   Repo: https://github.com/roderikusro/PredictIQ
+echo   Repo: https://github.com/roderikusro/Statisy
 echo ============================================
 echo.
 echo Jangan lupa reload di PythonAnywhere setelah push!

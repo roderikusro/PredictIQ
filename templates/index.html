@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Sistem Statistik Prediktif Berbasis Machine Learning untuk analisis dan prediksi data ekonomi Indonesia">
-    <title>Projek Akhir BPS — Sistem Statistik Prediktif</title>
+    <title>Statisy — Sistem Statistik Prediktif</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -20,6 +20,9 @@
     <!-- Lucide Icons CDN -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <!-- Favicon -->
+    <link rel="icon" href="/static/images/icon.png" type="image/png">
+
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/style.css?v=2.5">
 </head>
@@ -32,10 +35,10 @@
         <div class="sidebar-header">
             <div class="logo">
                 <div class="logo-icon">
-                    <i data-lucide="brain-circuit"></i>
+                    <img src="/static/images/icon.png" alt="Statisy Logo">
                 </div>
                 <div class="logo-text">
-                    <h1>Projek Akhir BPS</h1>
+                    <h1>Statisy</h1>
                     <span>Statistik Prediktif</span>
                 </div>
             </div>
@@ -104,8 +107,8 @@
             <i data-lucide="menu"></i>
         </button>
         <div class="mobile-logo">
-            <i data-lucide="brain-circuit"></i>
-            <span>Projek Akhir BPS</span>
+            <img src="/static/images/icon.png" alt="Statisy Logo">
+            <span>Statisy</span>
         </div>
     </header>
 
@@ -427,7 +430,7 @@
                     <div class="card result-card" id="result-card" style="display:none;">
                         <div class="card-header" style="display:flex; justify-content:space-between; align-items:center;">
                             <h3><i data-lucide="zap"></i> Hasil Prediksi</h3>
-                            <button class="btn btn-sm btn-ghost" id="btn-export-result" title="Export PNG" onclick="exportToImage('result-card', 'Hasil_Prediksi_PredictIQ')">
+                            <button class="btn btn-sm btn-ghost" id="btn-export-result" title="Export PNG" onclick="exportToImage('result-card', 'Hasil_Prediksi_Statisy')">
                                 <i data-lucide="image"></i> Export
                             </button>
                         </div>
@@ -1113,7 +1116,7 @@
                     <p class="page-subtitle">Ringkasan analisis visual siap ekspor untuk kebutuhan infografis</p>
                 </div>
                 <div class="header-actions" style="display:flex; gap:10px;">
-                    <button class="btn btn-primary" id="btn-export-infographic" onclick="exportToImage('infographic-canvas', 'Infografis_Analisis_PredictIQ')">
+                    <button class="btn btn-primary" id="btn-export-infographic" onclick="exportToImage('infographic-canvas', 'Infografis_Analisis_Statisy')">
                         <i data-lucide="image"></i>
                         <span>Export PNG</span>
                     </button>
@@ -1169,7 +1172,9 @@
                     <div class="infog-header-bg"></div>
                     <div class="infog-header-content">
                         <div class="infog-logo-area">
-                            <div class="infog-logo-icon"><i data-lucide="brain-circuit"></i></div>
+                            <div class="infog-logo-icon">
+                                <img src="/static/images/icon.png" alt="Statisy Logo">
+                            </div>
                             <div>
                                 <h1 id="infog-title" contenteditable="true" spellcheck="false">Laporan Analisis Statistik Prediktif</h1>
                                 <p id="infog-subtitle" contenteditable="true" spellcheck="false">Sistem Prediktif Berbasis Machine Learning</p>
@@ -1353,7 +1358,7 @@
 
                 <!-- Footer -->
                 <div class="infog-footer">
-                    <span>Dihasilkan oleh <strong>Sistem Statistik Prediktif</strong> — PredictIQ</span>
+                    <span>Dihasilkan oleh <strong>Sistem Statistik Prediktif</strong> — Statisy</span>
                     <span id="infog-footer-date"></span>
                 </div>
 

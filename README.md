@@ -1,4 +1,4 @@
-# 🧠 Projek Akhir BPS — Sistem Statistik Prediktif
+# 🧠 Statisy — Sistem Statistik Prediktif
 
 Sistem Statistik Prediktif Berbasis Machine Learning untuk analisis dan prediksi data ekonomi Indonesia.
 

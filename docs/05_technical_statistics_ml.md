@@ -1,6 +1,6 @@
 # 📘 Technical Documentation — Statistika & Machine Learning
 
-Dokumen ini menjelaskan secara rinci alur, pemrosesan matematika, serta kalkulasi statistika yang terjadi di belakang layar (backend) pada Sistem Statistik Prediktif (PredictIQ). Semua proses pemodelan dienkapsulasi di dalam kelas `PredictiveModel` pada file `backend/ml_model.py`.
+Dokumen ini menjelaskan secara rinci alur, pemrosesan matematika, serta kalkulasi statistika yang terjadi di belakang layar (backend) pada Sistem Statistik Prediktif (Statisy). Semua proses pemodelan dienkapsulasi di dalam kelas `PredictiveModel` pada file `backend/ml_model.py`.
 
 ---
 
@@ -480,4 +480,4 @@ Endpoint `/api/infographic-data` mengumpulkan seluruh data dari dashboard, EDA, 
 4. **Narasi Forecast:** Insight dari hasil auto-forecast.
 5. **Narasi Fitur Kunci:** Top 3 fitur berpengaruh berdasarkan Feature Importance dari Random Forest atau XGBoost (bergantung pada ketersediaan).
 
-Melalui kombinasi semua mekanisme di atas, sistem PredictIQ memberikan prediksi yang dinamis, terkalibrasi, dan disertai konteks statistik yang lengkap untuk mendukung pengambilan keputusan berbasis data.
+Melalui kombinasi semua mekanisme di atas, sistem Statisy memberikan prediksi yang dinamis, terkalibrasi, dan disertai konteks statistik yang lengkap untuk mendukung pengambilan keputusan berbasis data.
