@@ -84,7 +84,7 @@ input, select { font-family: inherit; }
   box-shadow: 0 4px 15px rgba(139,92,246,0.3);
   flex-shrink: 0;
 }
-.logo-icon .logo-svg { width: 26px; height: 26px; }
+.logo-icon .logo-svg { width: 26px; height: 26px; object-fit: contain; }
 .logo-text h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.5px; }
 .logo-text span { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
 .sidebar-nav { flex: 1; padding: 16px 12px; overflow-y: auto; }
@@ -134,6 +134,7 @@ input, select { font-family: inherit; }
   width: 22px;
   height: 22px;
   flex-shrink: 0;
+  object-fit: contain;
 }
 .sidebar-overlay {
   display: none; position: fixed; inset: 0;
@@ -807,7 +808,7 @@ input, select { font-family: inherit; }
   box-shadow: 0 6px 20px rgba(139,92,246,0.4);
   flex-shrink: 0;
 }
-.infog-logo-icon .logo-svg { width: 34px; height: 34px; }
+.infog-logo-icon .logo-svg { width: 34px; height: 34px; object-fit: contain; }
 .infog-header h1 {
   font-size: 22px; font-weight: 800;
   letter-spacing: -0.5px;
