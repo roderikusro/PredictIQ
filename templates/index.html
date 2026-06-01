@@ -26,7 +26,318 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="/static/css/style.css?v=3.5">
 </head>
-<body>
+<body>    <!-- ============================================= -->
+    <!-- ============================================= -->
+    <!--                  LANDING PAGE                 -->
+    <!-- ============================================= -->
+    <div id="login-page" class="login-overlay-fullscreen" style="display: flex; flex-direction: column; overflow-y: auto; justify-content: flex-start; padding: 0;">
+        <!-- Header -->
+        <header class="landing-header">
+            <div class="landing-container-wide">
+                <div class="landing-logo">
+                    <img src="/static/images/icon.svg" alt="Statisy Logo" class="landing-logo-img">
+                    <span class="landing-logo-text">Statisy</span>
+                </div>
+                <nav class="landing-nav">
+                    <a href="#fitur" class="landing-nav-link">Fitur</a>
+                    <a href="#alur" class="landing-nav-link">Cara Kerja</a>
+                    <a href="#tentang" class="landing-nav-link">Tentang</a>
+                </nav>
+                <button class="btn btn-sm btn-ghost landing-btn-login" onclick="openAuthModal()">
+                    <i data-lucide="log-in"></i> Masuk / Daftar
+                </button>
+            </div>
+        </header>
+
+        <!-- Hero Section -->
+        <section class="landing-hero">
+            <div class="landing-container-mid">
+                <div class="hero-text-content">
+                    <div class="hero-badge">Statisy Predictive Analytics</div>
+                    <h1 class="hero-title">Eksplorasi Data & Prediksi Ekonomi dengan <span class="gradient-text">Machine Learning</span></h1>
+                    <p class="hero-subtitle">Platform analitis cerdas berbasis web untuk memproses dataset Anda, melatih model prediktif otomatis, dan mengekspor visualisasi data premium secara instan.</p>
+                    <div class="hero-actions">
+                        <button class="btn btn-primary btn-lg landing-btn-cta" onclick="openAuthModal()">
+                            Mulai Sekarang <i data-lucide="arrow-right"></i>
+                        </button>
+                        <a href="#fitur" class="btn btn-ghost btn-lg">Pelajari Fitur</a>
+                    </div>
+                </div>
+
+                <!-- Interactive Mockup Dashboard (HTML & CSS Only) -->
+                <div class="hero-mockup-wrapper">
+                    <div class="dashboard-mockup">
+                        <div class="mockup-header">
+                            <div class="mockup-dots">
+                                <span class="dot red"></span>
+                                <span class="dot yellow"></span>
+                                <span class="dot green"></span>
+                            </div>
+                            <div class="mockup-address">https://statisy.id/dashboard</div>
+                        </div>
+                        <div class="mockup-body">
+                            <!-- Sidebar -->
+                            <div class="mockup-sidebar">
+                                <span class="mockup-sidebar-item active"></span>
+                                <span class="mockup-sidebar-item"></span>
+                                <span class="mockup-sidebar-item"></span>
+                                <span class="mockup-sidebar-item"></span>
+                            </div>
+                            <!-- Mockup Main Content -->
+                            <div class="mockup-content">
+                                <div class="mockup-widgets">
+                                    <div class="mockup-widget">
+                                        <span class="widget-label">R² Score (Akurasi)</span>
+                                        <span class="widget-value text-purple">0.965</span>
+                                    </div>
+                                    <div class="mockup-widget">
+                                        <span class="widget-label">MAE (Error)</span>
+                                        <span class="widget-value text-blue">0.574</span>
+                                    </div>
+                                    <div class="mockup-widget">
+                                        <span class="widget-label">Model Terbaik</span>
+                                        <span class="widget-value text-gold">Random Forest</span>
+                                    </div>
+                                </div>
+                                <div class="mockup-chart-box">
+                                    <div class="mockup-chart-header">
+                                        <span class="chart-title">Visualisasi Tren & Prediksi GDP</span>
+                                        <span class="chart-legend">
+                                            <span class="legend-dot actual"></span> Aktual
+                                            <span class="legend-dot pred"></span> Prediksi
+                                        </span>
+                                    </div>
+                                    <div class="mockup-chart-graph">
+                                        <!-- Mini SVG Chart representation -->
+                                        <svg viewBox="0 0 400 120" class="mini-svg-chart">
+                                            <defs>
+                                                <linearGradient id="actual-grad" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3"></stop>
+                                                    <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0"></stop>
+                                                </linearGradient>
+                                            </defs>
+                                            <path d="M0,100 L40,80 L80,95 L120,60 L160,70 L200,40 L240,55 L280,30 L320,38 L360,20 L400,25" fill="none" stroke="#3b82f6" stroke-width="2"></path>
+                                            <path d="M0,100 L40,80 L80,95 L120,60 L160,70 L200,40 L240,55 L280,30 L320,38 L360,20 L400,25 L400,120 L0,120 Z" fill="url(#actual-grad)"></path>
+                                            <!-- Forecast dotted path -->
+                                            <path d="M280,30 L320,25 L360,15 L400,10" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,3"></path>
+                                            <!-- Grid lines -->
+                                            <line x1="0" y1="30" x2="400" y2="30" stroke="rgba(255,255,255,0.05)"></line>
+                                            <line x1="0" y1="60" x2="400" y2="60" stroke="rgba(255,255,255,0.05)"></line>
+                                            <line x1="0" y1="90" x2="400" y2="90" stroke="rgba(255,255,255,0.05)"></line>
+                                        </svg>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Section -->
+        <section class="landing-features" id="fitur">
+            <div class="landing-container-mid">
+                <div class="section-header">
+                    <span class="section-badge">Fitur Utama</span>
+                    <h2>Didesain untuk Efisiensi Analisis Prediktif</h2>
+                    <p>Statisy menyediakan rangkaian alat lengkap untuk menjelajahi data dan melatih model pembelajaran mesin tanpa perlu keahlian pemrograman mendalam.</p>
+                </div>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon bg-purple-glow">
+                            <i data-lucide="line-chart"></i>
+                        </div>
+                        <h3>Automated EDA</h3>
+                        <p>Analisis Statistik Deskriptif, matriks korelasi interaktif, analisis outlier, dan sebaran histogram variabel terhitung otomatis.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon bg-blue-glow">
+                            <i data-lucide="cpu"></i>
+                        </div>
+                        <h3>Multi-Model ML Training</h3>
+                        <p>Latih secara instan model Linear Regression, Random Forest, dan XGBoost untuk mencari model dengan tingkat kesalahan terkecil.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon bg-teal-glow">
+                            <i data-lucide="image"></i>
+                        </div>
+                        <h3>Premium Infographic Export</h3>
+                        <p>Dapatkan berkas infografis visual beresolusi tinggi (PNG) siap presentasi dengan kustomisasi layout dan palet warna modern.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon bg-gold-glow">
+                            <i data-lucide="lock"></i>
+                        </div>
+                        <h3>Ruang Kerja Terisolasi</h3>
+                        <p>Setiap akun memiliki riwayat analisis dan unggahan dataset mandiri yang terenkripsi dan tidak saling tertimpa dengan pengguna lain.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- How It Works Section -->
+        <section class="landing-how" id="alur">
+            <div class="landing-container-mid">
+                <div class="section-header">
+                    <span class="section-badge">Alur Kerja</span>
+                    <h2>Bagaimana Statisy Bekerja?</h2>
+                </div>
+                <div class="how-steps">
+                    <div class="how-step">
+                        <div class="step-badge">1</div>
+                        <h3>Unggah Dataset</h3>
+                        <p>Unggah file CSV atau Excel berisi data ekonomi dengan isian metadata pendukung.</p>
+                    </div>
+                    <div class="how-step">
+                        <div class="step-badge">2</div>
+                        <h3>Konfigurasi & Training</h3>
+                        <p>Pilih kolom target serta fitur independen, sistem akan langsung melatih ketiga model secara otomatis.</p>
+                    </div>
+                    <div class="how-step">
+                        <div class="step-badge">3</div>
+                        <h3>Prediksi & Bandingkan</h3>
+                        <p>Masukkan nilai input, bandingkan hasil prediksi antar model, dan pelajari insight otomatis dari sistem.</p>
+                    </div>
+                    <div class="how-step">
+                        <div class="step-badge">4</div>
+                        <h3>Ekspor Infografis</h3>
+                        <p>Pilih preset visual, unduh ringkasan hasil analisis dalam format gambar premium dengan satu klik.</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer Section -->
+        <footer class="landing-footer" id="tentang">
+            <div class="landing-container-mid">
+                <div class="footer-top">
+                    <div class="footer-brand">
+                        <div class="landing-logo">
+                            <img src="/static/images/icon.svg" alt="Statisy Logo" class="landing-logo-img">
+                            <span class="landing-logo-text">Statisy</span>
+                        </div>
+                        <p>Sistem Statistik Prediktif berbasis Machine Learning untuk mempercepat analisis data ekonomi makro.</p>
+                    </div>
+                    <div class="footer-links">
+                        <h4>Aplikasi</h4>
+                        <a href="#fitur">Fitur</a>
+                        <a href="#alur">Alur Kerja</a>
+                        <a href="#" onclick="openAuthModal(); return false;">Mulai Sekarang</a>
+                    </div>
+                    <div class="footer-admin">
+                        <h4>Akses Sistem</h4>
+                        <a href="#" id="landing-admin-link"><i data-lucide="shield-check"></i> Admin Portal</a>
+                    </div>
+                </div>
+                <div class="footer-bottom">
+                    <p>&copy; 2026 Statisy. Hak Cipta Dilindungi. Dibuat dengan presisi visual & performa analitik tinggi.</p>
+                </div>
+            </div>
+        </footer>
+
+        <!-- Modal Overlay for Authentication -->
+        <div id="auth-modal" class="landing-auth-modal" style="display: none;">
+            <div class="landing-auth-modal-content">
+                <button class="auth-modal-close" onclick="closeAuthModal()" title="Tutup Modal">&times;</button>
+                <div class="login-container" style="max-width: 900px; width: 100%;">
+                    <!-- Left Panel: Onboarding Guide (visible if no users registered) -->
+                    <div class="login-onboarding-panel" id="onboarding-panel" style="display: none;">
+                        <div class="onboarding-header">
+                            <img src="/static/images/icon.svg" alt="Statisy Logo" class="onboarding-logo">
+                            <h3>Selamat Datang di Statisy!</h3>
+                            <p>Ikuti panduan demo di bawah untuk memulai analisis prediktif.</p>
+                        </div>
+                        <div class="onboarding-steps">
+                            <div class="onboarding-step">
+                                <div class="step-num">1</div>
+                                <div class="step-content">
+                                    <h4>Unggah Dataset Anda</h4>
+                                    <p>Unggah file CSV atau Excel di menu Dataset Viewer untuk melatih model ML secara langsung.</p>
+                                </div>
+                            </div>
+                            <div class="onboarding-step">
+                                <div class="step-num">2</div>
+                                <div class="step-content">
+                                    <h4>Analisis Eksploratif (EDA)</h4>
+                                    <p>Pelajari statistik deskriptif, korelasi antar variabel, dan sebaran data Anda secara otomatis.</p>
+                                </div>
+                            </div>
+                            <div class="onboarding-step">
+                                <div class="step-num">3</div>
+                                <div class="step-content">
+                                    <h4>Latih & Prediksi Model</h4>
+                                    <p>Masukkan parameter ekonomi makro untuk memprediksi pertumbuhan GDP dengan model terbaik.</p>
+                                </div>
+                            </div>
+                            <div class="onboarding-step">
+                                <div class="step-num">4</div>
+                                <div class="step-content">
+                                    <h4>Ekspor Infografis Premium</h4>
+                                    <p>Unduh hasil visualisasi tren dan insights dalam bentuk infografis premium untuk presentasi Anda.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Right Panel: Auth Forms -->
+                    <div class="login-auth-panel">
+                        <div class="auth-header">
+                            <h2>Statisy Login</h2>
+                            <p>Silakan masuk atau daftar akun baru</p>
+                        </div>
+                        
+                        <!-- Tab Selector -->
+                        <div class="auth-tabs">
+                            <button class="auth-tab-btn active" id="btn-tab-login">Masuk</button>
+                            <button class="auth-tab-btn" id="btn-tab-register">Daftar</button>
+                        </div>
+                        
+                        <!-- Login Form -->
+                        <form id="login-form" class="auth-form active">
+                            <div class="form-group">
+                                <label for="login-username">Username</label>
+                                <div class="input-icon-wrap">
+                                    <i data-lucide="user"></i>
+                                    <input type="text" id="login-username" required placeholder="Masukkan username" autocomplete="username">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="login-password">Password</label>
+                                <div class="input-icon-wrap">
+                                    <i data-lucide="lock"></i>
+                                    <input type="password" id="login-password" required placeholder="Masukkan password" autocomplete="current-password">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-primary auth-submit-btn">
+                                <i data-lucide="log-in"></i> Masuk Sekarang
+                            </button>
+                        </form>
+
+                        <!-- Register Form -->
+                        <form id="register-form" class="auth-form">
+                            <div class="form-group">
+                                <label for="register-username">Username</label>
+                                <div class="input-icon-wrap">
+                                    <i data-lucide="user-plus"></i>
+                                    <input type="text" id="register-username" required placeholder="Minimal 3 karakter" autocomplete="username">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="register-password">Password</label>
+                                <div class="input-icon-wrap">
+                                    <i data-lucide="lock"></i>
+                                    <input type="password" id="register-password" required placeholder="Minimal 6 karakter" autocomplete="new-password">
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-secondary auth-submit-btn">
+                                <i data-lucide="user-check"></i> Buat Akun Baru
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- ============================================= -->
     <!--                  SIDEBAR                      -->
@@ -92,12 +403,27 @@
         </nav>
 
         <div class="sidebar-footer">
-            <div class="model-status">
+            <div class="user-badge" id="user-badge-container" style="display: none; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 8px 12px; background: rgba(255,255,255,0.05); border-radius: 8px; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="display: flex; align-items: center; gap: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: calc(100% - 28px);">
+                    <i data-lucide="user" style="color: #8b5cf6; width: 16px; height: 16px; flex-shrink: 0;"></i>
+                    <span id="active-user-display" style="font-size: 0.85rem; font-weight: 500; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">User</span>
+                </div>
+                <button id="btn-logout" class="btn-icon" title="Logout" style="color: #ef4444; padding: 4px; display: flex; align-items: center; justify-content: center; background: none; border: none; cursor: pointer;">
+                    <i data-lucide="log-out" style="width: 16px; height: 16px;"></i>
+                </button>
+            </div>
+            <div class="model-status" style="margin-bottom: 10px;">
                 <div class="status-dot" id="model-status-dot"></div>
                 <span id="model-status-text">Memuat model...</span>
             </div>
+            <div class="admin-footer-link" style="border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+                <a href="#" id="admin-panel-link" class="admin-link-footer" style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.8rem; text-decoration: none; transition: color 0.2s ease;">
+                    <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
+                    <span>Admin Panel Access</span>
+                </a>
+            </div>
         </div>
-    </aside>
+    </aside>e>
 
     <!-- ============================================= -->
     <!--              MOBILE HEADER                    -->
@@ -136,6 +462,7 @@
                 </div>
             </div>
 
+            <div class="main-page-content">
             <!-- Stat Cards -->
             <div class="stats-grid">
                 <div class="stat-card" id="stat-r2">
@@ -268,6 +595,19 @@
                     </div>
                 </div>
             </div>
+            </div>
+
+            <div class="page-empty-state">
+                <div class="page-empty-state-icon">
+                    <i data-lucide="line-chart"></i>
+                </div>
+                <h3>Dashboard Belum Aktif</h3>
+                <p>Silakan impor berkas dataset CSV atau Excel terlebih dahulu untuk memulai pemantauan statistik dan prediksi ekonomi.</p>
+                <button class="btn btn-primary" onclick="navigateTo('dataset')">
+                    <i data-lucide="upload-cloud"></i>
+                    <span>Impor Dataset Sekarang</span>
+                </button>
+            </div>
         </section>
 
         <!-- ========== PAGE: EDA ========== -->
@@ -279,6 +619,7 @@
                 </div>
             </div>
 
+            <div class="main-page-content">
             <!-- Insights Card -->
             <div class="card mb-4" id="eda-insights-card">
                 <div class="card-header">
@@ -380,6 +721,19 @@
                     </div>
                 </div>
             </div>
+            </div>
+
+            <div class="page-empty-state">
+                <div class="page-empty-state-icon">
+                    <i data-lucide="bar-chart-2"></i>
+                </div>
+                <h3>Analisis EDA Belum Aktif</h3>
+                <p>Fitur Exploratory Data Analysis (EDA) memerlukan dataset aktif untuk menampilkan visualisasi korelasi dan statistik deskriptif.</p>
+                <button class="btn btn-primary" onclick="navigateTo('dataset')">
+                    <i data-lucide="upload-cloud"></i>
+                    <span>Impor Dataset Sekarang</span>
+                </button>
+            </div>
         </section>
 
         <!-- ========== PAGE: PREDIKSI ========== -->
@@ -391,6 +745,7 @@
                 </div>
             </div>
 
+            <div class="main-page-content">
             <div class="predict-layout">
                 <!-- Form Input -->
                 <div class="card predict-form-card">
@@ -519,6 +874,19 @@
                     </div>
                 </div>
             </div>
+            </div>
+
+            <div class="page-empty-state">
+                <div class="page-empty-state-icon">
+                    <i data-lucide="cpu"></i>
+                </div>
+                <h3>Prediksi Belum Aktif</h3>
+                <p>Model Machine Learning (Linear Regression, Random Forest, XGBoost) memerlukan dataset aktif untuk dilatih sebelum dapat melakukan prediksi GDP/Target.</p>
+                <button class="btn btn-primary" onclick="navigateTo('dataset')">
+                    <i data-lucide="upload-cloud"></i>
+                    <span>Impor Dataset Sekarang</span>
+                </button>
+            </div>
         </section>
 
         <!-- ========== PAGE: TENTANG MODEL ========== -->
@@ -535,8 +903,7 @@
                         <option value="xgboost">XGBoost</option>
                     </select>
                 </div>
-            </div>
-
+               <div class="main-page-content">
             <!-- Model Overview Cards -->
             <div class="model-overview-grid">
                 <div class="card model-info-card">
@@ -629,7 +996,7 @@
                     <div class="chart-header">
                         <h3>Aktual vs Prediksi</h3>
                     </div>
-                    <div class="chart-body">
+                    <div class="card-body">
                         <canvas id="chart-actual-vs-pred"></canvas>
                     </div>
                 </div>
@@ -663,9 +1030,9 @@
                         
                         <h4>Rumus Model</h4>
                         <div class="formula">
-                            Å· = Î²â‚€ + Î²â‚xâ‚ + Î²â‚‚xâ‚‚ + ... + Î²â‚™xâ‚™
+                            Å· = Î²â‚€ + Î²â‚ xâ‚  + Î²â‚‚xâ‚‚ + ... + Î²â‚™xâ‚™
                         </div>
-                        <p>Di mana <strong>Å·</strong> adalah prediksi, <strong>Î²â‚€</strong> adalah intercept, dan <strong>Î²â‚...Î²â‚™</strong> adalah koefisien untuk setiap fitur.</p>
+                        <p>Di mana <strong>Å·</strong> adalah prediksi, <strong>Î²â‚€</strong> adalah intercept, and <strong>Î²â‚ ...Î²â‚™</strong> adalah koefisien untuk setiap fitur.</p>
 
                         <h4>Kelebihan</h4>
                         <ul>
@@ -763,6 +1130,19 @@
 
                 </div>
             </div>
+            </div>
+
+            <div class="page-empty-state">
+                <div class="page-empty-state-icon">
+                    <i data-lucide="cpu"></i>
+                </div>
+                <h3>Informasi Model Belum Aktif</h3>
+                <p>Silakan impor berkas dataset CSV atau Excel terlebih dahulu untuk melihat informasi evaluasi dan performa model machine learning.</p>
+                <button class="btn btn-primary" onclick="navigateTo('dataset')">
+                    <i data-lucide="upload-cloud"></i>
+                    <span>Impor Dataset Sekarang</span>
+                </button>
+            </div>
         </section>
 
         <!-- ========== PAGE: DATASET VIEWER ========== -->
@@ -773,11 +1153,10 @@
                     <p class="page-subtitle">Lihat dan kelola dataset yang digunakan untuk training model</p>
                 </div>
                 <div class="header-actions">
-                    <label class="btn btn-primary btn-upload" for="file-upload-input">
+                    <button class="btn btn-primary" onclick="openImportModal()">
                         <i data-lucide="upload"></i>
                         <span>Upload CSV / Excel</span>
-                    </label>
-                    <input type="file" id="file-upload-input" accept=".csv, .xlsx, .xls" style="display:none;">
+                    </button>
                 </div>
             </div>
 
@@ -827,6 +1206,42 @@
                     <div class="stat-info">
                         <span class="stat-label">Fitur</span>
                         <span class="stat-value" id="ds-features">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daftar Dataset Saya -->
+            <div class="card" id="user-datasets-card" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <h3><i data-lucide="files"></i> Daftar Dataset Saya</h3>
+                    <div class="card-actions">
+                        <button class="btn btn-sm btn-primary" onclick="openImportModal()">
+                            <i data-lucide="upload-cloud"></i>
+                            <span>Import Baru</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="data-table" id="user-datasets-table">
+                            <thead>
+                                <tr>
+                                    <th>Dataset</th>
+                                    <th>Deskripsi</th>
+                                    <th>Sumber Data</th>
+                                    <th>Ukuran / Dimensi</th>
+                                    <th>Status</th>
+                                    <th style="text-align: center;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="user-datasets-tbody">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                                        Memuat daftar dataset Anda...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </div>
             </div>
@@ -917,6 +1332,7 @@
                 </div>
             </div>
 
+            <div class="main-page-content">
             <!-- Best Model Banner -->
             <div class="card best-model-banner" id="best-model-banner">
                 <div class="card-body">
@@ -1106,6 +1522,19 @@
                     </div>
                 </div>
             </div>
+            </div>
+
+            <div class="page-empty-state">
+                <div class="page-empty-state-icon">
+                    <i data-lucide="git-compare"></i>
+                </div>
+                <h3>Perbandingan Model Belum Aktif</h3>
+                <p>Fitur perbandingan model memerlukan dataset aktif untuk melatih Linear Regression, Random Forest, dan XGBoost sebelum dapat dibandingkan secara berdampingan.</p>
+                <button class="btn btn-primary" onclick="navigateTo('dataset')">
+                    <i data-lucide="upload-cloud"></i>
+                    <span>Impor Dataset Sekarang</span>
+                </button>
+            </div>
         </section>
 
         <!-- ========== PAGE: INFOGRAFIS OTOMATIS ========== -->
@@ -1127,6 +1556,7 @@
                 </div>
             </div>
 
+            <div class="main-page-content">
             <!-- ========== CUSTOMIZATION TOOLBAR ========== -->
             <div class="infog-toolbar" id="infog-toolbar">
                 <div class="infog-toolbar-group">
@@ -1364,9 +1794,272 @@
 
                 </div>
             </div>
+            </div>
+
+            <div class="page-empty-state">
+                <div class="page-empty-state-icon">
+                    <i data-lucide="image"></i>
+                </div>
+                <h3>Infografis Belum Aktif</h3>
+                <p>Silakan impor berkas dataset CSV atau Excel terlebih dahulu untuk menghasilkan laporan infografis otomatis.</p>
+                <button class="btn btn-primary" onclick="navigateTo('dataset')">
+                    <i data-lucide="upload-cloud"></i>
+                    <span>Impor Dataset Sekarang</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ========== PAGE: ADMIN DASHBOARD ========== -->
+        <section class="page" id="page-admin">
+            <div class="page-header">
+                <div>
+                    <h2>Admin Dashboard</h2>
+                    <p class="page-subtitle">Kelola dataset lintas pengguna serta log riwayat prediksi</p>
+                </div>
+            </div>
+
+            <!-- Grid Ringkasan Stat -->
+            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));">
+                <div class="stat-card mini">
+                    <div class="stat-icon purple">
+                        <i data-lucide="database"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Total Dataset</span>
+                        <span class="stat-value" id="admin-total-datasets">—</span>
+                    </div>
+                </div>
+                <div class="stat-card mini">
+                    <div class="stat-icon blue">
+                        <i data-lucide="folder-git-2"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Dataset User</span>
+                        <span class="stat-value" id="admin-user-datasets">—</span>
+                    </div>
+                </div>
+                <div class="stat-card mini">
+                    <div class="stat-icon teal">
+                        <i data-lucide="history"></i>
+                    </div>
+                    <div class="stat-info">
+                        <span class="stat-label">Total Log Riwayat</span>
+                        <span class="stat-value" id="admin-total-history">—</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel Kelola Dataset -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h3><i data-lucide="files"></i> Manajemen Dataset & Metadata</h3>
+                    <div class="card-actions">
+                        <button class="btn btn-sm btn-primary" id="admin-btn-upload-trigger">
+                            <i data-lucide="upload-cloud"></i>
+                            <span>Import Baru</span>
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="data-table" id="admin-dataset-table">
+                            <thead>
+                                <tr>
+                                    <th>Dataset & Pemilik</th>
+                                    <th>Deskripsi</th>
+                                    <th>Sumber Data</th>
+                                    <th>Ukuran / Dimensi</th>
+                                    <th>Tgl Unggah</th>
+                                    <th>Status</th>
+                                    <th style="text-align: center;">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-dataset-tbody">
+                                <tr>
+                                    <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                                        Memuat data dataset...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Row: Preview & History -->
+            <div style="display: flex; flex-direction: column; gap: 24px;">
+                
+                <!-- Dataset Preview Panel -->
+                <div class="card" id="admin-preview-panel" style="display: none;">
+                    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <h3><i data-lucide="table-properties"></i> Preview Dataset: <span id="admin-preview-filename" style="color: var(--accent-purple);">—</span></h3>
+                        <button class="btn btn-sm btn-ghost" onclick="document.getElementById('admin-preview-panel').style.display='none'">
+                            <i data-lucide="x"></i> Tutup
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive" style="max-height: 320px; overflow-y: auto;">
+                            <table class="data-table">
+                                <thead id="admin-preview-thead"></thead>
+                                <tbody id="admin-preview-tbody"></tbody>
+                            </table>
+                        </div>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 12px; font-style: italic;">
+                            *Menampilkan maksimal 10 baris data pertama sebagai sampel preview.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- History Management Panel -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i data-lucide="server-crash"></i> Log Riwayat Prediksi Pengguna</h3>
+                        <div class="card-actions">
+                            <button class="btn btn-sm btn-ghost" id="admin-btn-export-csv" title="Download CSV">
+                                <i data-lucide="download"></i> <span>CSV</span>
+                            </button>
+                            <button class="btn btn-sm btn-ghost" id="admin-btn-export-excel" title="Download Excel">
+                                <i data-lucide="download"></i> <span>Excel</span>
+                            </button>
+                            <button class="btn btn-sm btn-ghost btn-danger" id="admin-btn-clear-history" title="Hapus Semua Riwayat">
+                                <i data-lucide="trash-2"></i> <span>Hapus Semua</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="empty-state" id="admin-history-empty" style="display: none;">
+                            <i data-lucide="inbox"></i>
+                            <p>Belum ada riwayat prediksi pengguna.</p>
+                        </div>
+                        <div class="table-responsive" id="admin-history-table-container">
+                            <table class="data-table" id="admin-history-table">
+                                <thead>
+                                    <tr>
+                                        <th>No</th>
+                                        <th>Waktu</th>
+                                        <th>Model</th>
+                                        <th>Input Parameter</th>
+                                        <th>Prediksi</th>
+                                        <th style="text-align: center;">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="admin-history-tbody">
+                                    <!-- Populated via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </section>
 
     </main>
+
+    <!-- ============================================= -->
+    <!--            IMPORT DATASET MODAL               -->
+    <!-- ============================================= -->
+    <div class="modal-overlay" id="import-modal" style="display: none; position: fixed; inset: 0; background: rgba(10, 14, 26, 0.85); backdrop-filter: blur(10px); z-index: 1500; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.25s ease;">
+        <div class="card" style="width: 90%; max-width: 500px; border-color: var(--border-hover); box-shadow: var(--shadow-lg); transform: translateY(-20px); transition: transform 0.25s ease;">
+            <div class="card-header">
+                <h3><i data-lucide="upload-cloud" style="color: var(--accent-purple);"></i> Import Dataset &amp; Metadata</h3>
+                <button class="btn-icon" onclick="closeImportModal()" style="color: var(--text-muted); font-size: 1.5rem; line-height: 1; padding: 0 4px;">&times;</button>
+            </div>
+            <div class="card-body" style="padding: 20px 24px;">
+                <form id="import-form">
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                        
+                        <!-- File Input -->
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">Pilih Berkas Dataset (CSV / Excel)*</label>
+                            <input type="file" id="import-file" accept=".csv, .xlsx, .xls" required style="padding: 10px; background: rgba(15,23,42,0.6); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; outline: none; width: 100%;">
+                        </div>
+
+                        <!-- Deskripsi -->
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">Deskripsi Singkat Dataset</label>
+                            <input type="text" id="import-desc" placeholder="Contoh: Indikator PDB Nasional BPS Q1 2026" autocomplete="off" required style="padding: 10px 14px; background: rgba(15,23,42,0.6); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; outline: none; width: 100%;">
+                        </div>
+
+                        <!-- Sumber -->
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">Sumber Data</label>
+                            <input type="text" id="import-source" placeholder="Contoh: Badan Pusat Statistik / Bank Indonesia" autocomplete="off" required style="padding: 10px 14px; background: rgba(15,23,42,0.6); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; outline: none; width: 100%;">
+                        </div>
+
+                        <!-- Pengunggah -->
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">Nama Pengunggah</label>
+                            <input type="text" id="import-user" placeholder="Contoh: Roderikus" autocomplete="off" required style="padding: 10px 14px; background: rgba(15,23,42,0.6); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; outline: none; width: 100%;">
+                        </div>
+
+                        <div class="form-actions" style="justify-content: flex-end; gap: 10px; margin-top: 12px;">
+                            <button type="button" class="btn btn-ghost" onclick="closeImportModal()">Batal</button>
+                            <button type="submit" class="btn btn-primary" style="background: var(--gradient-purple); color: #fff;">
+                                <i data-lucide="check-circle-2"></i> <span>Mulai Proses Import</span>
+                            </button>
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================= -->
+    <!--            ADMIN LOGIN MODAL                  -->
+    <!-- ============================================= -->
+    <div class="modal-overlay" id="admin-login-modal" style="display: none; position: fixed; inset: 0; background: rgba(10, 14, 26, 0.85); backdrop-filter: blur(10px); z-index: 1600; align-items: center; justify-content: center; opacity: 0; transition: opacity 0.25s ease;">
+        <div class="card" style="width: 90%; max-width: 400px; border-color: var(--border-hover); box-shadow: var(--shadow-lg); transform: translateY(-20px); transition: transform 0.25s ease;">
+            <div class="card-header">
+                <h3><i data-lucide="shield-check" style="color: var(--accent-purple);"></i> Admin Login</h3>
+                <button class="btn-icon" onclick="closeAdminLoginModal()" style="color: var(--text-muted); font-size: 1.5rem; line-height: 1; padding: 0 4px;">&times;</button>
+            </div>
+            <div class="card-body" style="padding: 20px 24px;">
+                <form id="admin-login-form">
+                    <div style="display: flex; flex-direction: column; gap: 16px;">
+                        <div class="form-group">
+                            <label style="font-weight: 600; font-size: 0.85rem; color: var(--text-secondary);">Password Admin</label>
+                            <input type="password" id="admin-password" placeholder="Masukkan password admin" required style="padding: 10px; background: rgba(15,23,42,0.6); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); font-size: 14px; outline: none; width: 100%;">
+                        </div>
+                        <div class="form-actions" style="justify-content: flex-end; gap: 10px;">
+                            <button type="button" class="btn btn-ghost" onclick="closeAdminLoginModal()">Batal</button>
+                            <button type="submit" class="btn btn-primary" style="background: var(--gradient-purple); color: #fff;">
+                                <i data-lucide="check-circle-2"></i> <span>Verifikasi</span>
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================= -->
+    <!--            RIGHT SIDEBAR (HISTORY)            -->
+    <!-- ============================================= -->
+    <aside class="right-sidebar" id="right-sidebar">
+        <div class="right-sidebar-header">
+            <h3><i data-lucide="history"></i> Riwayat Prediksi</h3>
+            <button class="btn-icon" id="btn-close-right-sidebar" title="Tutup Sidebar">
+                <i data-lucide="x"></i>
+            </button>
+        </div>
+        <div class="right-sidebar-body">
+            <div class="empty-state" id="right-sidebar-empty">
+                <i data-lucide="inbox"></i>
+                <p>Belum ada riwayat prediksi.</p>
+            </div>
+            <div class="right-sidebar-list" id="right-sidebar-list" style="display: none;">
+                <!-- Filled by JS -->
+            </div>
+        </div>
+    </aside>
+
+    <!-- Floating FAB to toggle Right Sidebar -->
+    <button class="floating-history-btn" id="floating-history-btn" title="Buka Riwayat Prediksi">
+        <i data-lucide="history"></i>
+        <span class="badge-dot" id="right-sidebar-badge-dot" style="display: none;"></span>
+    </button>
 
     <!-- ============================================= -->
     <!--              TOAST NOTIFICATION               -->
@@ -1384,7 +2077,7 @@
     </div>
 
     <!-- Custom JavaScript -->
-    <script src="/static/js/app.js?v=2.6"></script>
+    <script src="/static/js/app.js?v=2.7"></script>
 </body>
 </html>
 

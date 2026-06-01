@@ -5,6 +5,17 @@
  * =============================================================
  */
 
+// ---- Helper: Safe Lucide Icons Creation ----
+function safeCreateIcons(options) {
+  if (typeof lucide !== 'undefined' && typeof lucide.createIcons === 'function') {
+    try {
+      lucide.createIcons(options);
+    } catch (e) {
+      console.warn('Gagal merender ikon Lucide:', e);
+    }
+  }
+}
+
 // ---- Konfigurasi API ----
 const API = {
   dashboard: '/api/dashboard',
@@ -20,7 +31,14 @@ const API = {
   exportEda: '/api/export-eda',
   clearHistory: '/api/clear-history',
   eda: '/api/eda',
-  infographic: '/api/infographic-data'
+  infographic: '/api/infographic-data',
+  adminDatasets: '/api/admin/datasets',
+  adminActivate: '/api/admin/datasets/activate',
+  adminDelete: '/api/admin/datasets',
+  adminDownload: '/api/admin/datasets/download',
+  adminPreview: '/api/admin/datasets/preview',
+  adminHistory: '/api/admin/history',
+  adminDeleteHistoryItem: '/api/admin/history'
 };
 
 // ---- State Aplikasi ----
@@ -67,8 +85,11 @@ document.addEventListener('DOMContentLoaded', () => {
   initExport();
   initClearHistory();
   initDatasetSearch();
-  lucide.createIcons();
-  loadDashboard();
+  initAdminDashboard(); // Inisialisasi Admin Dashboard
+  initAuthForms();
+  initRightSidebarHistory();
+  safeCreateIcons();
+  checkAuthStatus();
 });
 
 // ===========================================================
@@ -114,6 +135,7 @@ function navigateTo(page) {
     case 'comparison': loadComparison(); break;
     case 'dataset': loadDataset(); break;
     case 'infografis': loadInfographic(); break;
+    case 'admin': loadAdmin(); break; // Rute Admin Dashboard
   }
 }
 
@@ -171,6 +193,7 @@ async function loadDashboard() {
       // Model status
       const dot = document.getElementById('model-status-dot');
       const text = document.getElementById('model-status-text');
+      document.body.classList.toggle('model-not-trained', !dashRes.model_trained);
       if (dashRes.model_trained) {
         dot.classList.remove('inactive');
         text.textContent = 'Model Aktif';
@@ -805,21 +828,34 @@ function renderCoefficientsChart(coefficients) {
 // ===========================================================
 async function loadDataset() {
   try {
+    loadUserDatasets();
     const res = await fetchAPI(API.dataset);
-    if (res.status !== 'success') return;
+    if (res.status !== 'success' || !res.data) {
+      document.getElementById('ds-rows').textContent = '—';
+      document.getElementById('ds-cols').textContent = '—';
+      document.getElementById('ds-target').textContent = '—';
+      document.getElementById('ds-features').textContent = '—';
+      document.getElementById('dataset-thead').innerHTML = '<tr><td colspan="4" style="text-align:center; color: var(--text-muted); padding: 20px;">Belum ada dataset aktif. Silakan pilih atau unggah dataset di bawah.</td></tr>';
+      document.getElementById('dataset-tbody').innerHTML = '';
+      return;
+    }
     const info = res.data;
 
     // Info cards
-    document.getElementById('ds-rows').textContent = info.shape.rows;
-    document.getElementById('ds-cols').textContent = info.shape.cols;
-    document.getElementById('ds-target').textContent = info.target;
-    document.getElementById('ds-features').textContent = info.feature_names.length;
+    document.getElementById('ds-rows').textContent = info.shape ? info.shape.rows : '—';
+    document.getElementById('ds-cols').textContent = info.shape ? info.shape.cols : '—';
+    document.getElementById('ds-target').textContent = info.target || '—';
+    document.getElementById('ds-features').textContent = info.feature_names ? info.feature_names.length : '—';
 
     // Data table
-    renderDataTable(info.columns, info.data);
+    if (info.columns && info.data) {
+      renderDataTable(info.columns, info.data);
+    }
 
     // Render Model Config
-    renderModelConfig(info);
+    if (info.columns) {
+      renderModelConfig(info);
+    }
 
   } catch (err) {
     console.error('Dataset error:', err);
@@ -1062,35 +1098,16 @@ function initDatasetSearch() {
 //                    UPLOAD CSV / EXCEL
 // ===========================================================
 function initUpload() {
-  const fileInput = document.getElementById('file-upload-input');
-  fileInput?.addEventListener('change', async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const statusCard = document.getElementById('upload-status-card');
-    statusCard.style.display = 'block';
-
-    const formData = new FormData();
-    formData.append('file', file);
-
-    try {
-      const res = await fetch(API.upload, { method: 'POST', body: formData });
-      const data = await res.json();
-
-      if (data.status === 'success') {
-        showToast('Dataset berhasil diunggah! Model dilatih ulang.', 'success');
-        loadDataset();
-        loadDashboard();
-      } else {
-        showToast(data.message || 'Gagal mengunggah', 'error');
-      }
-    } catch (err) {
-      showToast('Error upload: ' + err.message, 'error');
-    } finally {
-      statusCard.style.display = 'none';
-      fileInput.value = '';
-    }
-  });
+  const uploadBtn = document.querySelector('label[for="file-upload-input"]');
+  if (uploadBtn) {
+    uploadBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      openImportModal(async () => {
+        await loadDataset();
+        await loadDashboard();
+      });
+    });
+  }
 }
 
 // ===========================================================
@@ -1127,6 +1144,12 @@ async function fetchAPI(url, method = 'GET', body = null) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (body) opts.body = JSON.stringify(body);
   const res = await fetch(url, opts);
+  if (res.status === 401) {
+    const loginPage = document.getElementById('login-page');
+    if (loginPage) loginPage.style.display = 'flex';
+    const badge = document.getElementById('user-badge-container');
+    if (badge) badge.style.display = 'none';
+  }
   return res.json();
 }
 
@@ -1146,7 +1169,7 @@ function showToast(message, type = 'info') {
   const icons = { success: 'check-circle', error: 'alert-circle', info: 'info' };
   toast.innerHTML = `<i data-lucide="${icons[type] || 'info'}"></i><span>${message}</span>`;
   container.appendChild(toast);
-  lucide.createIcons({ nodes: [toast] });
+  safeCreateIcons({ nodes: [toast] });
   setTimeout(() => { toast.style.opacity = '0'; toast.style.transform = 'translateX(100%)'; setTimeout(() => toast.remove(), 300); }, 4000);
 }
 
@@ -1247,7 +1270,7 @@ async function loadComparison() {
       xgbAvailable ? d.xgboost.actual_vs_predicted : null
     );
 
-    lucide.createIcons();
+    safeCreateIcons();
   } catch (err) {
     console.error('Comparison error:', err);
     showToast('Gagal memuat perbandingan model', 'error');
@@ -1405,7 +1428,7 @@ function initCompareForm() {
         const list = document.getElementById('insight-list');
         list.innerHTML = d.insight.map(i => `<li>${i}</li>`).join('');
 
-        lucide.createIcons();
+        safeCreateIcons();
         showToast('Perbandingan prediksi berhasil!', 'success');
       } else {
         showToast(res.message || 'Gagal', 'error');
@@ -1523,7 +1546,7 @@ async function loadEDA() {
     xSelect.onchange = (e) => renderEdaScatter(xSelect.value, ySelect.value);
     ySelect.onchange = (e) => renderEdaScatter(xSelect.value, ySelect.value);
 
-    lucide.createIcons();
+    safeCreateIcons();
   } catch (err) {
     console.error('EDA error:', err);
     showToast('Gagal memuat data EDA', 'error');
@@ -2043,6 +2066,7 @@ async function loadInfographic() {
   try {
     const res = await fetchAPI(API.infographic);
     if (res.status !== 'success') {
+      if (document.body.classList.contains('model-not-trained')) return;
       showToast('Gagal memuat data infografis', 'error');
       return;
     }
@@ -2249,7 +2273,7 @@ async function loadInfographic() {
     }
 
     // Re-render icons
-    if (typeof lucide !== 'undefined') lucide.createIcons();
+    safeCreateIcons();
     
     // Apply initial accent
     applyInfographicAccentColor(infogChartColor);
@@ -2527,3 +2551,763 @@ function renderInfogScatterChart(records, xCol, yCol, canvasId = 'infog-chart-sc
     }
   });
 }
+
+// ===========================================================
+//                    ADMIN DASHBOARD LOGIC
+// ===========================================================
+
+function initAdminDashboard() {
+  // Bind trigger button to open modal
+  document.getElementById('admin-btn-upload-trigger')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openImportModal(async () => {
+      await loadAdmin();
+      loadDashboard();
+    });
+  });
+
+  // Bind export buttons
+  document.getElementById('admin-btn-export-csv')?.addEventListener('click', () => {
+    window.location.href = API.export + '?format=csv';
+  });
+
+  document.getElementById('admin-btn-export-excel')?.addEventListener('click', () => {
+    window.location.href = API.export + '?format=excel';
+  });
+
+  // Bind clear history button
+  document.getElementById('admin-btn-clear-history')?.addEventListener('click', async () => {
+    if (!confirm('Hapus semua riwayat prediksi?')) return;
+    try {
+      showLoading(true);
+      const res = await fetchAPI(API.clearHistory, 'POST');
+      if (res.status === 'success') {
+        showToast('Riwayat prediksi berhasil dihapus', 'success');
+        await loadAdmin();
+        loadHistory();
+      }
+    } catch (err) {
+      showToast('Gagal menghapus riwayat', 'error');
+    } finally {
+      showLoading(false);
+    }
+  });
+}
+
+async function loadAdmin() {
+  try {
+    showLoading(true);
+    const [datasetsRes, historyRes] = await Promise.all([
+      fetchAPI(API.adminDatasets),
+      fetchAPI(API.adminHistory)
+    ]);
+
+    if (datasetsRes.status === 'success') {
+      const datasets = datasetsRes.data;
+      const totalDatasets = datasets.length;
+      const userDatasets = datasets.filter(d => d.source_type === 'user').length;
+      
+      document.getElementById('admin-total-datasets').textContent = totalDatasets;
+      document.getElementById('admin-user-datasets').textContent = userDatasets;
+
+      const tbody = document.getElementById('admin-dataset-tbody');
+      if (datasets.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:20px;">Tidak ada dataset yang terdeteksi.</td></tr>`;
+      } else {
+        tbody.innerHTML = datasets.map(d => {
+          const m = d.metadata || {};
+          const statusBadge = d.is_active 
+            ? `<span class="badge" style="background:rgba(34,197,94,0.15); color:var(--accent-green);">Aktif</span>` 
+            : `<button class="model-selector" onclick="activateDataset('${d.filename}', '${d.source_type}', '${d.session_id || ''}')" style="padding: 2px 10px; font-size: 0.75rem;">Aktifkan</button>`;
+
+          const deleteBtn = d.source_type === 'user' 
+            ? `<button class="btn btn-sm btn-ghost btn-danger" onclick="deleteDataset('${d.filename}', '${d.session_id || ''}')" title="Hapus Dataset" style="padding: 4px 8px; border-radius: 6px;"><i data-lucide="trash-2" style="width:14px; height:14px;"></i></button>` 
+            : `<span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">Protected</span>`;
+
+          const descText = m.description || 'Tidak ada deskripsi';
+          const sourceText = m.source || 'Tidak diketahui';
+          const uploaderText = m.uploaded_by || 'Anonymous';
+
+          return `
+            <tr>
+              <td>
+                <div style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">${d.display_name}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace; margin-top: 2px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${d.filename}">${d.filename}</div>
+                <div style="font-size: 0.75rem; margin-top: 4px; display: inline-block; padding: 1px 6px; border-radius: 4px; background: ${d.source_type === 'system' ? 'rgba(59,130,246,0.15)' : 'rgba(139,92,246,0.15)'}; color: ${d.source_type === 'system' ? 'var(--accent-blue)' : 'var(--accent-purple)'}; font-weight: 500;">
+                  ${d.source_type === 'system' ? 'Sistem Bawaan' : uploaderText}
+                </div>
+              </td>
+              <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${descText}">${descText}</td>
+              <td style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${sourceText}">${sourceText}</td>
+              <td>
+                <div style="font-weight:500;">${d.size_kb} KB</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${d.rows} baris &times; ${d.cols} kol</div>
+              </td>
+              <td>${d.modified_at}</td>
+              <td>${statusBadge}</td>
+              <td>
+                <div style="display:flex; justify-content:center; gap:6px;">
+                  <button class="btn btn-sm btn-ghost" onclick="previewDataset('${d.filename}', '${d.source_type}', '${d.session_id || ''}')" title="Preview Data" style="padding: 4px 8px; border-radius: 6px;"><i data-lucide="eye" style="width:14px; height:14px;"></i></button>
+                  <button class="btn btn-sm btn-ghost" onclick="downloadDataset('${d.filename}', '${d.source_type}', '${d.session_id || ''}')" title="Download File" style="padding: 4px 8px; border-radius: 6px;"><i data-lucide="download" style="width:14px; height:14px;"></i></button>
+                  ${deleteBtn}
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+        safeCreateIcons({ nodes: [tbody] });
+      }
+    }
+
+    if (historyRes.status === 'success') {
+      const history = historyRes.data;
+      document.getElementById('admin-total-history').textContent = history.length;
+
+      const empty = document.getElementById('admin-history-empty');
+      const tableContainer = document.getElementById('admin-history-table-container');
+      const tbody = document.getElementById('admin-history-tbody');
+
+      if (history.length === 0) {
+        empty.style.display = 'block';
+        tableContainer.style.display = 'none';
+      } else {
+        empty.style.display = 'none';
+        tableContainer.style.display = 'block';
+
+        const reversed = [...history].reverse();
+        tbody.innerHTML = reversed.map((h, i) => {
+          let featuresList = [];
+          if (h.input) {
+            Object.entries(h.input).forEach(([k, v]) => {
+              featuresList.push(`<span style="white-space:nowrap; background:rgba(255,255,255,0.03); padding:2px 6px; border-radius:4px; font-size:0.72rem; border:1px solid rgba(255,255,255,0.05); color:var(--text-secondary);">${k.replace(/_/g, ' ')}: <strong>${v}</strong></span>`);
+            });
+          }
+
+          const deletedLabel = h.deleted_by_user ? ' <span style="font-size:0.7rem; color:var(--accent-red); background:rgba(239,68,68,0.12); padding:1px 6px; border-radius:4px; font-weight:600; margin-left:6px;">Hidden by User</span>' : '';
+
+          return `
+            <tr>
+              <td>${history.length - i}</td>
+              <td>${h.timestamp}</td>
+              <td><span class="badge" style="background:rgba(139,92,246,0.15); color:var(--accent-purple);">${h.model}${deletedLabel}</span></td>
+              <td><div style="display:flex; flex-wrap:wrap; gap:4px; max-width:380px;">${featuresList.join('')}</div></td>
+              <td><strong style="color:var(--accent-green); font-size:0.95rem;">${h.prediction}%</strong></td>
+              <td style="text-align:center;">
+                <button class="btn btn-sm btn-ghost btn-danger" onclick="deleteHistoryItem(${h.id})" title="Hapus Riwayat ini" style="padding: 4px 8px; border-radius: 6px;">
+                  <i data-lucide="trash-2" style="width:14px; height:14px;"></i>
+                </button>
+              </td>
+            </tr>
+          `;
+        }).join('');
+        safeCreateIcons({ nodes: [tbody] });
+      }
+    }
+  } catch (err) {
+    console.error('Admin page error:', err);
+    showToast('Gagal memuat halaman admin', 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function activateDataset(filename, source_type, session_id) {
+  if (!confirm(`Apakah Anda yakin ingin mengaktifkan dataset "${filename}" dan melatih ulang model?`)) return;
+  showLoading(true);
+  try {
+    const res = await fetchAPI(API.adminActivate, 'POST', { filename, source_type, session_id });
+    if (res.status === 'success') {
+      showToast('Dataset berhasil diaktifkan dan model dilatih ulang!', 'success');
+      await loadAdmin();
+      loadDashboard();
+    } else {
+      showToast(res.message || 'Gagal mengaktifkan dataset', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function deleteDataset(filename, session_id) {
+  if (!confirm(`Apakah Anda yakin ingin menghapus dataset "${filename}"? Jika dataset ini sedang aktif, sistem akan kembali menggunakan dataset default.`)) return;
+  showLoading(true);
+  try {
+    const res = await fetchAPI(`${API.adminDelete}?filename=${encodeURIComponent(filename)}&session_id=${session_id}&source_type=user`, 'DELETE');
+    if (res.status === 'success') {
+      showToast(res.message, 'success');
+      await loadAdmin();
+      if (res.reverted_to_default) {
+        showToast('Dataset yang dihapus sedang aktif. Sistem dialihkan ke dataset default.', 'info');
+        loadDashboard();
+      }
+    } else {
+      showToast(res.message || 'Gagal menghapus dataset', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function previewDataset(filename, source_type, session_id) {
+  showLoading(true);
+  try {
+    const res = await fetchAPI(`${API.adminPreview}?filename=${encodeURIComponent(filename)}&session_id=${session_id}&source_type=${source_type}`);
+    if (res.status === 'success') {
+      document.getElementById('admin-preview-panel').style.display = 'block';
+      document.getElementById('admin-preview-filename').textContent = filename;
+      
+      const thead = document.getElementById('admin-preview-thead');
+      const tbody = document.getElementById('admin-preview-tbody');
+      
+      thead.innerHTML = `<tr>${res.headers.map(h => `<th>${h.replace(/_/g, ' ')}</th>`).join('')}</tr>`;
+      tbody.innerHTML = res.rows.map(row => `
+        <tr>
+          ${row.map(val => `<td>${val !== null ? val : '—'}</td>`).join('')}
+        </tr>
+      `).join('');
+      
+      document.getElementById('admin-preview-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else {
+      showToast(res.message || 'Gagal memuat preview', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+function downloadDataset(filename, source_type, session_id) {
+  window.location.href = `${API.adminDownload}?filename=${encodeURIComponent(filename)}&session_id=${session_id}&source_type=${source_type}`;
+}
+
+async function deleteHistoryItem(predId) {
+  if (!confirm('Apakah Anda yakin ingin menghapus item riwayat ini secara permanen dari sistem?')) return;
+  showLoading(true);
+  try {
+    const res = await fetchAPI(`${API.adminDeleteHistoryItem}/${predId}`, 'DELETE');
+    if (res.status === 'success') {
+      showToast('Item riwayat berhasil dihapus secara permanen!', 'success');
+      await loadAdmin();
+      loadHistory(); // refresh predictions history on other pages
+    } else {
+      showToast(res.message || 'Gagal menghapus item riwayat', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// Modal dialog untuk import dataset dengan metadata
+function openImportModal(onSuccessCallback) {
+  const modal = document.getElementById('import-modal');
+  const form = document.getElementById('import-form');
+  form.reset();
+  
+  modal.style.display = 'flex';
+  setTimeout(() => {
+    modal.style.opacity = '1';
+    modal.querySelector('.card').style.transform = 'translateY(0)';
+  }, 50);
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    const fileInput = document.getElementById('import-file');
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const desc = document.getElementById('import-desc').value;
+    const source = document.getElementById('import-source').value;
+    const user = document.getElementById('import-user').value;
+
+    closeImportModal();
+    showLoading(true);
+
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('description', desc);
+    formData.append('source', source);
+    formData.append('uploaded_by', user);
+
+    try {
+      const res = await fetch(API.upload, { method: 'POST', body: formData });
+      const data = await res.json();
+
+      if (data.status === 'success') {
+        showToast('Dataset berhasil diimport dengan metadata!', 'success');
+        if (onSuccessCallback) {
+          await onSuccessCallback();
+        } else {
+          loadDataset();
+          loadDashboard();
+        }
+      } else {
+        showToast(data.message || 'Gagal mengunggah', 'error');
+      }
+    } catch (err) {
+      showToast('Error upload: ' + err.message, 'error');
+    } finally {
+      showLoading(false);
+    }
+  };
+}
+
+function closeImportModal() {
+  const modal = document.getElementById('import-modal');
+  modal.style.opacity = '0';
+  modal.querySelector('.card').style.transform = 'translateY(-20px)';
+  setTimeout(() => {
+    modal.style.display = 'none';
+  }, 250);
+}
+
+// ===========================================================
+//                    USER AUTHENTICATION LOGIC
+// ===========================================================
+async function checkAuthStatus() {
+  try {
+    const res = await fetchAPI('/api/auth/status');
+    if (res.status === 'success') {
+      const loggedIn = res.logged_in;
+      const totalUsers = res.total_users;
+      
+      const loginPage = document.getElementById('login-page');
+      const onboardingPanel = document.getElementById('onboarding-panel');
+      const userBadgeContainer = document.getElementById('user-badge-container');
+      const activeUserDisplay = document.getElementById('active-user-display');
+      
+      if (!loggedIn) {
+        if (loginPage) loginPage.style.display = 'flex';
+        if (onboardingPanel) {
+          onboardingPanel.style.display = totalUsers === 0 ? 'flex' : 'none';
+        }
+        if (userBadgeContainer) userBadgeContainer.style.display = 'none';
+      } else {
+        if (loginPage) loginPage.style.display = 'none';
+        if (userBadgeContainer) {
+          userBadgeContainer.style.display = 'flex';
+          if (activeUserDisplay) activeUserDisplay.textContent = res.username;
+        }
+        
+        loadDashboard();
+        loadRightSidebarHistory();
+      }
+    }
+  } catch (err) {
+    console.error('Auth check error:', err);
+  }
+}
+
+function initAuthForms() {
+  const btnTabLogin = document.getElementById('btn-tab-login');
+  const btnTabRegister = document.getElementById('btn-tab-register');
+  const loginForm = document.getElementById('login-form');
+  const registerForm = document.getElementById('register-form');
+  
+  btnTabLogin?.addEventListener('click', () => {
+    btnTabLogin.classList.add('active');
+    btnTabRegister?.classList.remove('active');
+    loginForm?.classList.add('active');
+    registerForm?.classList.remove('active');
+  });
+  
+  btnTabRegister?.addEventListener('click', () => {
+    btnTabRegister.classList.add('active');
+    btnTabLogin?.classList.remove('active');
+    registerForm?.classList.add('active');
+    loginForm?.classList.remove('active');
+  });
+  
+  loginForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('login-username').value;
+    const password = document.getElementById('login-password').value;
+    
+    showLoading(true);
+    try {
+      const res = await fetchAPI('/api/auth/login', 'POST', { username, password });
+      if (res.status === 'success') {
+        showToast('Login berhasil!', 'success');
+        closeAuthModal();
+        document.getElementById('login-page').style.display = 'none';
+        document.getElementById('user-badge-container').style.display = 'flex';
+        document.getElementById('active-user-display').textContent = res.username;
+        loginForm.reset();
+        loadDashboard();
+        loadRightSidebarHistory();
+      } else {
+        showToast(res.message || 'Login gagal', 'error');
+      }
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error');
+    } finally {
+      showLoading(false);
+    }
+  });
+  
+  registerForm?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const username = document.getElementById('register-username').value;
+    const password = document.getElementById('register-password').value;
+    
+    showLoading(true);
+    try {
+      const res = await fetchAPI('/api/auth/register', 'POST', { username, password });
+      if (res.status === 'success') {
+        showToast('Pendaftaran akun berhasil!', 'success');
+        const loginRes = await fetchAPI('/api/auth/login', 'POST', { username, password });
+        if (loginRes.status === 'success') {
+          closeAuthModal();
+          document.getElementById('login-page').style.display = 'none';
+          document.getElementById('user-badge-container').style.display = 'flex';
+          document.getElementById('active-user-display').textContent = loginRes.username;
+          registerForm.reset();
+          loadDashboard();
+          loadRightSidebarHistory();
+        } else {
+          showToast(loginRes.message || 'Login otomatis gagal. Silakan masuk secara manual.', 'error');
+          btnTabLogin?.click();
+        }
+      } else {
+        showToast(res.message || 'Pendaftaran gagal', 'error');
+      }
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error');
+    } finally {
+      showLoading(false);
+    }
+  });
+  
+  document.getElementById('btn-logout')?.addEventListener('click', async () => {
+    if (!confirm('Apakah Anda yakin ingin keluar?')) return;
+    showLoading(true);
+    try {
+      const res = await fetchAPI('/api/auth/logout', 'POST');
+      if (res.status === 'success') {
+        showToast('Anda telah keluar', 'success');
+        checkAuthStatus();
+      }
+    } catch (err) {
+      showToast('Gagal logout: ' + err.message, 'error');
+    } finally {
+      showLoading(false);
+    }
+  });
+
+  document.getElementById('admin-panel-link')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openAdminLoginModal();
+  });
+
+  document.getElementById('landing-admin-link')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    openAdminLoginModal();
+  });
+
+  document.getElementById('admin-login-form')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const password = document.getElementById('admin-password').value;
+    showLoading(true);
+    try {
+      const res = await fetchAPI('/api/admin/login', 'POST', { password });
+      if (res.status === 'success') {
+        showToast('Login Admin berhasil!', 'success');
+        closeAdminLoginModal();
+        document.getElementById('admin-login-form').reset();
+        navigateTo('admin');
+      } else {
+        showToast(res.message || 'Password Admin salah', 'error');
+      }
+    } catch (err) {
+      showToast('Error: ' + err.message, 'error');
+    } finally {
+      showLoading(false);
+    }
+  });
+}
+
+function openAdminLoginModal() {
+  const modal = document.getElementById('admin-login-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  setTimeout(() => {
+    modal.style.opacity = '1';
+    modal.querySelector('.card').style.transform = 'translateY(0)';
+  }, 50);
+}
+
+function closeAdminLoginModal() {
+  const modal = document.getElementById('admin-login-modal');
+  if (!modal) return;
+  modal.style.opacity = '0';
+  modal.querySelector('.card').style.transform = 'translateY(-20px)';
+  setTimeout(() => {
+    modal.style.display = 'none';
+  }, 250);
+}
+
+// ===========================================================
+//                    USER SIDEBAR HISTORY
+// ===========================================================
+function initRightSidebarHistory() {
+  const sidebar = document.getElementById('right-sidebar');
+  const btnClose = document.getElementById('btn-close-right-sidebar');
+  const btnToggle = document.getElementById('floating-history-btn');
+  
+  btnToggle?.addEventListener('click', () => {
+    sidebar.classList.toggle('open');
+    if (sidebar.classList.contains('open')) {
+      loadRightSidebarHistory();
+      const dot = document.getElementById('right-sidebar-badge-dot');
+      if (dot) dot.style.display = 'none';
+    }
+  });
+  
+  btnClose?.addEventListener('click', () => {
+    sidebar.classList.remove('open');
+  });
+}
+
+async function loadRightSidebarHistory() {
+  try {
+    const res = await fetchAPI(API.history);
+    if (res.status === 'success') {
+      const history = res.data;
+      const empty = document.getElementById('right-sidebar-empty');
+      const list = document.getElementById('right-sidebar-list');
+      
+      if (history.length === 0) {
+        if (empty) empty.style.display = 'block';
+        if (list) list.style.display = 'none';
+      } else {
+        if (empty) empty.style.display = 'none';
+        if (list) {
+          list.style.display = 'flex';
+          const reversed = [...history].reverse();
+          list.innerHTML = reversed.map(h => {
+            let inputStr = '';
+            if (h.input) {
+              inputStr = Object.entries(h.input)
+                .map(([k, v]) => `${k.replace(/_/g, ' ')}: <strong>${v}</strong>`)
+                .join(', ');
+            }
+            
+            const isPositive = parseFloat(h.prediction) >= 0;
+            const valClass = isPositive ? 'gdp-pos' : 'gdp-neg';
+            
+            return `
+              <div class="history-mini-card" id="history-mini-card-${h.id}">
+                <div class="history-mini-card-header">
+                  <span class="history-mini-model">${h.model}</span>
+                  <span class="history-mini-time">${h.timestamp ? h.timestamp.split(' ')[0] : ''}</span>
+                </div>
+                <div class="history-mini-body">
+                  <span class="history-mini-val ${valClass}">${h.prediction}%</span>
+                  <button class="history-mini-btn-delete" onclick="deleteUserHistoryItem(${h.id})" title="Hapus Riwayat">
+                    <i data-lucide="trash-2"></i>
+                  </button>
+                </div>
+                <div class="history-mini-inputs" title="${inputStr}">
+                  ${inputStr}
+                </div>
+              </div>
+            `;
+          }).join('');
+          
+          safeCreateIcons({ nodes: [list] });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Sidebar history load error:', err);
+  }
+}
+
+async function deleteUserHistoryItem(predId) {
+  if (!confirm('Apakah Anda yakin ingin menghapus item riwayat ini dari tampilan Anda?')) return;
+  showLoading(true);
+  try {
+    const res = await fetchAPI(`${API.history}/${predId}`, 'DELETE');
+    if (res.status === 'success') {
+      showToast('Item riwayat berhasil dihapus dari tampilan Anda!', 'success');
+      loadRightSidebarHistory();
+      loadHistory(); // refresh history table on prediksi page
+    } else {
+      showToast(res.message || 'Gagal menghapus riwayat', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+// ===========================================================
+//                    USER DATASET VIEWER ACTIONS
+// ===========================================================
+async function loadUserDatasets() {
+  try {
+    const res = await fetchAPI('/api/user/datasets');
+    if (res.status === 'success') {
+      const datasets = res.data;
+      const tbody = document.getElementById('user-datasets-tbody');
+      if (!tbody) return;
+
+      if (datasets.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:20px;">Belum ada dataset. Silakan unggah baru.</td></tr>`;
+      } else {
+        tbody.innerHTML = datasets.map(d => {
+          const m = d.metadata || {};
+          const statusBadge = d.is_active 
+            ? `<span class="badge" style="background:rgba(34,197,94,0.15); color:var(--accent-green);">Aktif</span>` 
+            : `<button class="model-selector" onclick="activateUserDataset('${d.filename}', '${d.source_type}')" style="padding: 2px 10px; font-size: 0.75rem;">Aktifkan</button>`;
+
+          const deleteBtn = d.source_type === 'user' 
+            ? `<button class="btn btn-sm btn-ghost btn-danger" onclick="deleteUserDataset('${d.filename}')" title="Hapus Dataset" style="padding: 4px 8px; border-radius: 6px;"><i data-lucide="trash-2" style="width:14px; height:14px;"></i></button>` 
+            : `<span style="font-size:0.75rem; color:var(--text-muted); font-style:italic;">Protected</span>`;
+
+          return `
+            <tr>
+              <td>
+                <div style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">${d.display_name}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace; margin-top: 2px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${d.filename}">${d.filename}</div>
+              </td>
+              <td style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${m.description || ''}">${m.description || 'Tidak ada deskripsi'}</td>
+              <td style="max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${m.source || ''}">${m.source || 'Sistem'}</td>
+              <td>
+                <div style="font-weight:500;">${d.size_kb} KB</div>
+                <div style="font-size:0.75rem; color:var(--text-muted); margin-top:2px;">${d.rows} baris &times; ${d.cols} kol</div>
+              </td>
+              <td>${statusBadge}</td>
+              <td>
+                <div style="display:flex; justify-content:center; gap:6px;">
+                  <button class="btn btn-sm btn-ghost" onclick="previewUserDataset('${d.filename}', '${d.source_type}')" title="Preview Data" style="padding: 4px 8px; border-radius: 6px;"><i data-lucide="eye" style="width:14px; height:14px;"></i></button>
+                  <button class="btn btn-sm btn-ghost" onclick="downloadUserDataset('${d.filename}', '${d.source_type}')" title="Download File" style="padding: 4px 8px; border-radius: 6px;"><i data-lucide="download" style="width:14px; height:14px;"></i></button>
+                  ${deleteBtn}
+                </div>
+              </td>
+            </tr>
+          `;
+        }).join('');
+        safeCreateIcons({ nodes: [tbody] });
+      }
+    }
+  } catch (err) {
+    console.error('User datasets error:', err);
+  }
+}
+
+async function activateUserDataset(filename, source_type) {
+  if (!confirm(`Apakah Anda yakin ingin mengaktifkan dataset "${filename}" dan melatih ulang model?`)) return;
+  showLoading(true);
+  try {
+    const res = await fetchAPI('/api/user/datasets/activate', 'POST', { filename, source_type });
+    if (res.status === 'success') {
+      showToast('Dataset berhasil diaktifkan dan model dilatih ulang!', 'success');
+      await loadUserDatasets();
+      loadDashboard();
+    } else {
+      showToast(res.message || 'Gagal mengaktifkan dataset', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function deleteUserDataset(filename) {
+  if (!confirm(`Apakah Anda yakin ingin menghapus dataset "${filename}"? Jika sedang aktif, model akan di-reset.`)) return;
+  showLoading(true);
+  try {
+    const res = await fetchAPI(`/api/user/datasets?filename=${encodeURIComponent(filename)}`, 'DELETE');
+    if (res.status === 'success') {
+      showToast(res.message, 'success');
+      await loadUserDatasets();
+      if (res.reverted_to_default) {
+        showToast('Dataset aktif dihapus. Sistem dialihkan ke default.', 'info');
+        loadDashboard();
+      }
+    } else {
+      showToast(res.message || 'Gagal menghapus dataset', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+async function previewUserDataset(filename, source_type) {
+  showLoading(true);
+  try {
+    const res = await fetchAPI(`/api/user/datasets/preview?filename=${encodeURIComponent(filename)}&source_type=${source_type}`);
+    if (res.status === 'success') {
+      const thead = document.getElementById('dataset-thead');
+      const tbody = document.getElementById('dataset-tbody');
+      if (thead && tbody) {
+        thead.innerHTML = `<tr>${res.headers.map(h => `<th>${h.replace(/_/g, ' ')}</th>`).join('')}</tr>`;
+        tbody.innerHTML = res.rows.map(row => `
+          <tr>
+            ${row.map(val => `<td>${val !== null ? val : '—'}</td>`).join('')}
+          </tr>
+        `).join('');
+        const pag = document.getElementById('dataset-pagination');
+        if (pag) pag.innerHTML = '';
+        showToast(`Preview dataset ${filename} berhasil dimuat.`, 'success');
+      }
+    } else {
+      showToast(res.message || 'Gagal memuat preview', 'error');
+    }
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  } finally {
+    showLoading(false);
+  }
+}
+
+function downloadUserDataset(filename, source_type) {
+  window.location.href = `/api/user/datasets/download?filename=${encodeURIComponent(filename)}&source_type=${source_type}`;
+}
+
+// Bind to window to guarantee accessibility from inline onclick handlers
+window.activateDataset = activateDataset;
+window.deleteDataset = deleteDataset;
+window.previewDataset = previewDataset;
+window.downloadDataset = downloadDataset;
+window.deleteHistoryItem = deleteHistoryItem;
+window.closeImportModal = closeImportModal;
+
+window.activateUserDataset = activateUserDataset;
+window.deleteUserDataset = deleteUserDataset;
+window.previewUserDataset = previewUserDataset;
+window.downloadUserDataset = downloadUserDataset;
+window.deleteUserHistoryItem = deleteUserHistoryItem;
+window.closeAdminLoginModal = closeAdminLoginModal;
+
+function openAuthModal() {
+  const modal = document.getElementById('auth-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+  
+  // Re-run Lucide on the modal to ensure icons display correctly
+  safeCreateIcons({ nodes: [modal] });
+}
+
+function closeAuthModal() {
+  const modal = document.getElementById('auth-modal');
+  if (!modal) return;
+  modal.style.display = 'none';
+  document.body.style.overflow = '';
+}
+
+window.openAuthModal = openAuthModal;
+window.closeAuthModal = closeAuthModal;
+
