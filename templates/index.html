@@ -24,13 +24,22 @@
     <link rel="icon" href="/static/images/favicon.svg" type="image/svg+xml">
 
     <!-- Custom CSS -->
-    <link rel="stylesheet" href="/static/css/style.css?v=3.5">
+    <link rel="stylesheet" href="/static/css/style.css?v=4.1">
 </head>
 <body>    <!-- ============================================= -->
     <!-- ============================================= -->
     <!--                  LANDING PAGE                 -->
     <!-- ============================================= -->
-    <div id="login-page" class="login-overlay-fullscreen" style="display: flex; flex-direction: column; overflow-y: auto; justify-content: flex-start; padding: 0;">
+    <div id="login-page" class="login-overlay-fullscreen" style="display: flex; flex-direction: column; justify-content: flex-start; padding: 0;">
+        
+        <!-- Animated Background Orbs -->
+        <div class="landing-bg-effects">
+            <div class="orb orb-1"></div>
+            <div class="orb orb-2"></div>
+            <div class="orb orb-3"></div>
+            <div class="grid-overlay"></div>
+        </div>
+
         <!-- Header -->
         <header class="landing-header">
             <div class="landing-container-wide">
@@ -43,7 +52,7 @@
                     <a href="#alur" class="landing-nav-link">Cara Kerja</a>
                     <a href="#tentang" class="landing-nav-link">Tentang</a>
                 </nav>
-                <button class="btn btn-sm btn-ghost landing-btn-login" onclick="openAuthModal()">
+                <button class="btn btn-sm landing-btn-login" onclick="openAuthModal()">
                     <i data-lucide="log-in"></i> Masuk / Daftar
                 </button>
             </div>
@@ -52,20 +61,34 @@
         <!-- Hero Section -->
         <section class="landing-hero">
             <div class="landing-container-mid">
-                <div class="hero-text-content">
-                    <div class="hero-badge">Statisy Predictive Analytics</div>
-                    <h1 class="hero-title">Eksplorasi Data & Prediksi Ekonomi dengan <span class="gradient-text">Machine Learning</span></h1>
-                    <p class="hero-subtitle">Platform analitis cerdas berbasis web untuk memproses dataset Anda, melatih model prediktif otomatis, dan mengekspor visualisasi data premium secara instan.</p>
+                <div class="hero-text-content fade-up">
+                    <div class="hero-badge">
+                        <span class="hero-badge-dot"></span>
+                        Statisy Predictive Analytics Platform
+                    </div>
+                    <h1 class="hero-title">Analisis Data & Prediksi Cerdas dengan <span class="gradient-text">Machine Learning</span></h1>
+                    <p class="hero-subtitle">Platform analitis berbasis web untuk memproses dataset, melatih model prediktif otomatis (Linear Regression, Random Forest, XGBoost), dan mengekspor visualisasi premium — tanpa perlu coding.</p>
                     <div class="hero-actions">
                         <button class="btn btn-primary btn-lg landing-btn-cta" onclick="openAuthModal()">
-                            Mulai Sekarang <i data-lucide="arrow-right"></i>
+                            <i data-lucide="zap"></i> Mulai Gratis
                         </button>
-                        <a href="#fitur" class="btn btn-ghost btn-lg">Pelajari Fitur</a>
+                        <a href="#alur" class="btn btn-ghost btn-lg landing-btn-demo">
+                            <i data-lucide="play-circle"></i> Lihat Cara Kerja
+                        </a>
+                    </div>
+                    <div class="hero-trust">
+                        <div class="hero-trust-avatars">
+                            <div class="trust-avatar" style="background: var(--gradient-purple);">S</div>
+                            <div class="trust-avatar" style="background: var(--gradient-blue);">A</div>
+                            <div class="trust-avatar" style="background: var(--gradient-teal);">M</div>
+                        </div>
+                        <span class="hero-trust-text">Digunakan oleh tim analisis data & peneliti</span>
                     </div>
                 </div>
 
-                <!-- Interactive Mockup Dashboard (HTML & CSS Only) -->
-                <div class="hero-mockup-wrapper">
+                <!-- Interactive Mockup Dashboard -->
+                <div class="hero-mockup-wrapper fade-up" style="animation-delay: 0.2s;">
+                    <div class="mockup-glow"></div>
                     <div class="dashboard-mockup">
                         <div class="mockup-header">
                             <div class="mockup-dots">
@@ -73,30 +96,35 @@
                                 <span class="dot yellow"></span>
                                 <span class="dot green"></span>
                             </div>
-                            <div class="mockup-address">https://statisy.id/dashboard</div>
+                            <div class="mockup-address">
+                                <i data-lucide="lock" style="width:10px;height:10px;margin-right:4px;"></i>
+                                statisy.id/dashboard
+                            </div>
                         </div>
                         <div class="mockup-body">
-                            <!-- Sidebar -->
                             <div class="mockup-sidebar">
                                 <span class="mockup-sidebar-item active"></span>
                                 <span class="mockup-sidebar-item"></span>
                                 <span class="mockup-sidebar-item"></span>
                                 <span class="mockup-sidebar-item"></span>
+                                <span class="mockup-sidebar-item"></span>
                             </div>
-                            <!-- Mockup Main Content -->
                             <div class="mockup-content">
                                 <div class="mockup-widgets">
-                                    <div class="mockup-widget">
+                                    <div class="mockup-widget widget-highlight">
                                         <span class="widget-label">R² Score (Akurasi)</span>
                                         <span class="widget-value text-purple">0.965</span>
+                                        <span class="widget-change positive">+2.3%</span>
                                     </div>
                                     <div class="mockup-widget">
                                         <span class="widget-label">MAE (Error)</span>
                                         <span class="widget-value text-blue">0.574</span>
+                                        <span class="widget-change negative">-0.8%</span>
                                     </div>
                                     <div class="mockup-widget">
                                         <span class="widget-label">Model Terbaik</span>
                                         <span class="widget-value text-gold">Random Forest</span>
+                                        <span class="widget-change positive">Top Pick</span>
                                     </div>
                                 </div>
                                 <div class="mockup-chart-box">
@@ -108,22 +136,25 @@
                                         </span>
                                     </div>
                                     <div class="mockup-chart-graph">
-                                        <!-- Mini SVG Chart representation -->
                                         <svg viewBox="0 0 400 120" class="mini-svg-chart">
                                             <defs>
                                                 <linearGradient id="actual-grad" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.3"></stop>
-                                                    <stop offset="100%" stop-color="#3b82f6" stop-opacity="0.0"></stop>
+                                                    <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.3"></stop>
+                                                    <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0.0"></stop>
+                                                </linearGradient>
+                                                <linearGradient id="line-grad" x1="0" y1="0" x2="1" y2="0">
+                                                    <stop offset="0%" stop-color="#8b5cf6"></stop>
+                                                    <stop offset="100%" stop-color="#3b82f6"></stop>
                                                 </linearGradient>
                                             </defs>
-                                            <path d="M0,100 L40,80 L80,95 L120,60 L160,70 L200,40 L240,55 L280,30 L320,38 L360,20 L400,25" fill="none" stroke="#3b82f6" stroke-width="2"></path>
+                                            <line x1="0" y1="30" x2="400" y2="30" stroke="rgba(255,255,255,0.03)"></line>
+                                            <line x1="0" y1="60" x2="400" y2="60" stroke="rgba(255,255,255,0.03)"></line>
+                                            <line x1="0" y1="90" x2="400" y2="90" stroke="rgba(255,255,255,0.03)"></line>
                                             <path d="M0,100 L40,80 L80,95 L120,60 L160,70 L200,40 L240,55 L280,30 L320,38 L360,20 L400,25 L400,120 L0,120 Z" fill="url(#actual-grad)"></path>
-                                            <!-- Forecast dotted path -->
-                                            <path d="M280,30 L320,25 L360,15 L400,10" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="4,3"></path>
-                                            <!-- Grid lines -->
-                                            <line x1="0" y1="30" x2="400" y2="30" stroke="rgba(255,255,255,0.05)"></line>
-                                            <line x1="0" y1="60" x2="400" y2="60" stroke="rgba(255,255,255,0.05)"></line>
-                                            <line x1="0" y1="90" x2="400" y2="90" stroke="rgba(255,255,255,0.05)"></line>
+                                            <path d="M0,100 L40,80 L80,95 L120,60 L160,70 L200,40 L240,55 L280,30 L320,38 L360,20 L400,25" fill="none" stroke="url(#line-grad)" stroke-width="2.5" stroke-linecap="round"></path>
+                                            <path d="M280,30 L320,25 L360,15 L400,10" fill="none" stroke="#f59e0b" stroke-width="2" stroke-dasharray="5,4" stroke-linecap="round"></path>
+                                            <circle cx="280" cy="30" r="3.5" fill="#8b5cf6" stroke="#0b0f19" stroke-width="1.5"></circle>
+                                            <circle cx="400" cy="10" r="3.5" fill="#f59e0b" stroke="#0b0f19" stroke-width="1.5"></circle>
                                         </svg>
                                     </div>
                                 </div>
@@ -134,42 +165,107 @@
             </div>
         </section>
 
+        <!-- Stats Bar Section -->
+        <section class="landing-stats">
+            <div class="landing-container-wide">
+                <div class="stats-grid">
+                    <div class="stat-item fade-up">
+                        <div class="stat-icon"><i data-lucide="brain"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-number">3</span>
+                            <span class="stat-label">Model ML Terlatih</span>
+                        </div>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item fade-up" style="animation-delay: 0.1s;">
+                        <div class="stat-icon"><i data-lucide="target"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-number">96.5%</span>
+                            <span class="stat-label">Akurasi R² Score</span>
+                        </div>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item fade-up" style="animation-delay: 0.2s;">
+                        <div class="stat-icon"><i data-lucide="file-spreadsheet"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-number">CSV/XLSX</span>
+                            <span class="stat-label">Format Didukung</span>
+                        </div>
+                    </div>
+                    <div class="stat-divider"></div>
+                    <div class="stat-item fade-up" style="animation-delay: 0.3s;">
+                        <div class="stat-icon"><i data-lucide="download"></i></div>
+                        <div class="stat-info">
+                            <span class="stat-number">PNG HD</span>
+                            <span class="stat-label">Ekspor Infografis</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- Features Section -->
         <section class="landing-features" id="fitur">
             <div class="landing-container-mid">
-                <div class="section-header">
+                <div class="section-header fade-up">
                     <span class="section-badge">Fitur Utama</span>
-                    <h2>Didesain untuk Efisiensi Analisis Prediktif</h2>
-                    <p>Statisy menyediakan rangkaian alat lengkap untuk menjelajahi data dan melatih model pembelajaran mesin tanpa perlu keahlian pemrograman mendalam.</p>
+                    <h2>Semua yang Anda Butuhkan untuk <span class="gradient-text">Analisis Prediktif</span></h2>
+                    <p>Rangkaian alat lengkap untuk eksplorasi data, pelatihan model, dan visualisasi — tanpa keahlian pemrograman.</p>
                 </div>
                 <div class="features-grid">
-                    <div class="feature-card">
+                    <div class="feature-card fade-up">
+                        <div class="feature-card-glow"></div>
                         <div class="feature-icon bg-purple-glow">
-                            <i data-lucide="line-chart"></i>
+                            <i data-lucide="scan-search"></i>
                         </div>
                         <h3>Automated EDA</h3>
-                        <p>Analisis Statistik Deskriptif, matriks korelasi interaktif, analisis outlier, dan sebaran histogram variabel terhitung otomatis.</p>
+                        <p>Statistik deskriptif, korelasi interaktif, deteksi outlier, dan histogram — semuanya terhitung otomatis dari dataset Anda.</p>
+                        <div class="feature-tag">Eksplorasi Data</div>
                     </div>
-                    <div class="feature-card">
+                    <div class="feature-card fade-up" style="animation-delay: 0.1s;">
+                        <div class="feature-card-glow"></div>
                         <div class="feature-icon bg-blue-glow">
                             <i data-lucide="cpu"></i>
                         </div>
-                        <h3>Multi-Model ML Training</h3>
-                        <p>Latih secara instan model Linear Regression, Random Forest, dan XGBoost untuk mencari model dengan tingkat kesalahan terkecil.</p>
+                        <h3>Multi-Model Training</h3>
+                        <p>Latih 3 model sekaligus — Linear Regression, Random Forest, dan XGBoost — untuk menemukan model optimal Anda.</p>
+                        <div class="feature-tag">Machine Learning</div>
                     </div>
-                    <div class="feature-card">
+                    <div class="feature-card fade-up" style="animation-delay: 0.2s;">
+                        <div class="feature-card-glow"></div>
                         <div class="feature-icon bg-teal-glow">
                             <i data-lucide="image"></i>
                         </div>
-                        <h3>Premium Infographic Export</h3>
-                        <p>Dapatkan berkas infografis visual beresolusi tinggi (PNG) siap presentasi dengan kustomisasi layout dan palet warna modern.</p>
+                        <h3>Infographic Export</h3>
+                        <p>Ekspor infografis visual beresolusi tinggi (PNG) siap presentasi dengan 3 preset layout dan palet warna kustom.</p>
+                        <div class="feature-tag">Visualisasi</div>
                     </div>
-                    <div class="feature-card">
+                    <div class="feature-card fade-up" style="animation-delay: 0.3s;">
+                        <div class="feature-card-glow"></div>
                         <div class="feature-icon bg-gold-glow">
-                            <i data-lucide="lock"></i>
+                            <i data-lucide="shield-check"></i>
                         </div>
                         <h3>Ruang Kerja Terisolasi</h3>
-                        <p>Setiap akun memiliki riwayat analisis dan unggahan dataset mandiri yang terenkripsi dan tidak saling tertimpa dengan pengguna lain.</p>
+                        <p>Setiap akun memiliki dataset, model, dan riwayat prediksi mandiri — data tidak pernah tercampur antar pengguna.</p>
+                        <div class="feature-tag">Keamanan</div>
+                    </div>
+                    <div class="feature-card fade-up" style="animation-delay: 0.4s;">
+                        <div class="feature-card-glow"></div>
+                        <div class="feature-icon bg-pink-glow">
+                            <i data-lucide="git-compare"></i>
+                        </div>
+                        <h3>Perbandingan Model</h3>
+                        <p>Bandingkan performa antar model secara visual — MAE, RMSE, R², feature importance — dalam satu tampilan.</p>
+                        <div class="feature-tag">Analisis</div>
+                    </div>
+                    <div class="feature-card fade-up" style="animation-delay: 0.5s;">
+                        <div class="feature-card-glow"></div>
+                        <div class="feature-icon bg-green-glow">
+                            <i data-lucide="message-square-text"></i>
+                        </div>
+                        <h3>Auto-Generated Insights</h3>
+                        <p>Setiap prediksi dilengkapi narasi insight otomatis yang menjelaskan hasil analisis dalam bahasa yang mudah dipahami.</p>
+                        <div class="feature-tag">Insight</div>
                     </div>
                 </div>
             </div>
@@ -178,30 +274,70 @@
         <!-- How It Works Section -->
         <section class="landing-how" id="alur">
             <div class="landing-container-mid">
-                <div class="section-header">
+                <div class="section-header fade-up">
                     <span class="section-badge">Alur Kerja</span>
-                    <h2>Bagaimana Statisy Bekerja?</h2>
+                    <h2>Dari Data Mentah ke <span class="gradient-text">Insight Prediktif</span></h2>
+                    <p>Empat langkah sederhana untuk mengubah dataset Anda menjadi prediksi yang actionable.</p>
                 </div>
-                <div class="how-steps">
-                    <div class="how-step">
-                        <div class="step-badge">1</div>
-                        <h3>Unggah Dataset</h3>
-                        <p>Unggah file CSV atau Excel berisi data ekonomi dengan isian metadata pendukung.</p>
+                <div class="how-timeline">
+                    <div class="timeline-line"></div>
+                    <div class="how-step fade-up">
+                        <div class="step-badge">
+                            <i data-lucide="upload-cloud"></i>
+                        </div>
+                        <div class="step-content-box">
+                            <span class="step-number">Langkah 01</span>
+                            <h3>Unggah Dataset</h3>
+                            <p>Upload file CSV atau Excel beserta metadata (deskripsi, sumber, nama pengupload) ke workspace pribadi Anda.</p>
+                        </div>
                     </div>
-                    <div class="how-step">
-                        <div class="step-badge">2</div>
-                        <h3>Konfigurasi & Training</h3>
-                        <p>Pilih kolom target serta fitur independen, sistem akan langsung melatih ketiga model secara otomatis.</p>
+                    <div class="how-step fade-up" style="animation-delay: 0.15s;">
+                        <div class="step-badge">
+                            <i data-lucide="settings"></i>
+                        </div>
+                        <div class="step-content-box">
+                            <span class="step-number">Langkah 02</span>
+                            <h3>Konfigurasi & Training</h3>
+                            <p>Pilih kolom target dan fitur independen — sistem otomatis melatih tiga model ML sekaligus dalam hitungan detik.</p>
+                        </div>
                     </div>
-                    <div class="how-step">
-                        <div class="step-badge">3</div>
-                        <h3>Prediksi & Bandingkan</h3>
-                        <p>Masukkan nilai input, bandingkan hasil prediksi antar model, dan pelajari insight otomatis dari sistem.</p>
+                    <div class="how-step fade-up" style="animation-delay: 0.3s;">
+                        <div class="step-badge">
+                            <i data-lucide="bar-chart-3"></i>
+                        </div>
+                        <div class="step-content-box">
+                            <span class="step-number">Langkah 03</span>
+                            <h3>Prediksi & Bandingkan</h3>
+                            <p>Masukkan nilai input, bandingkan hasil prediksi antar model secara visual, dan baca insight naratif otomatis.</p>
+                        </div>
                     </div>
-                    <div class="how-step">
-                        <div class="step-badge">4</div>
-                        <h3>Ekspor Infografis</h3>
-                        <p>Pilih preset visual, unduh ringkasan hasil analisis dalam format gambar premium dengan satu klik.</p>
+                    <div class="how-step fade-up" style="animation-delay: 0.45s;">
+                        <div class="step-badge">
+                            <i data-lucide="download"></i>
+                        </div>
+                        <div class="step-content-box">
+                            <span class="step-number">Langkah 04</span>
+                            <h3>Ekspor Infografis</h3>
+                            <p>Pilih preset visual (Executive, Business, Technical), kustomisasi warna, dan unduh infografis PNG premium siap presentasi.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- CTA Section -->
+        <section class="landing-cta">
+            <div class="landing-container-mid">
+                <div class="cta-card fade-up">
+                    <div class="cta-bg-pattern"></div>
+                    <div class="cta-content">
+                        <h2>Mulai Analisis Prediktif Anda Sekarang</h2>
+                        <p>Daftar gratis dan mulai eksplorasi data dengan tiga model machine learning sekaligus. Tanpa instalasi, langsung dari browser.</p>
+                        <div class="cta-actions">
+                            <button class="btn btn-primary btn-lg landing-btn-cta" onclick="openAuthModal()">
+                                <i data-lucide="rocket"></i> Buat Akun Gratis
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -216,13 +352,19 @@
                             <img src="/static/images/icon.svg" alt="Statisy Logo" class="landing-logo-img">
                             <span class="landing-logo-text">Statisy</span>
                         </div>
-                        <p>Sistem Statistik Prediktif berbasis Machine Learning untuk mempercepat analisis data ekonomi makro.</p>
+                        <p>Sistem Statistik Prediktif berbasis Machine Learning untuk mempercepat analisis data ekonomi makro Indonesia.</p>
                     </div>
                     <div class="footer-links">
-                        <h4>Aplikasi</h4>
-                        <a href="#fitur">Fitur</a>
-                        <a href="#alur">Alur Kerja</a>
-                        <a href="#" onclick="openAuthModal(); return false;">Mulai Sekarang</a>
+                        <h4>Platform</h4>
+                        <a href="#fitur"><i data-lucide="layers"></i> Fitur</a>
+                        <a href="#alur"><i data-lucide="workflow"></i> Alur Kerja</a>
+                        <a href="#" onclick="openAuthModal(); return false;"><i data-lucide="log-in"></i> Mulai Sekarang</a>
+                    </div>
+                    <div class="footer-links">
+                        <h4>Teknologi</h4>
+                        <a href="#">Linear Regression</a>
+                        <a href="#">Random Forest</a>
+                        <a href="#">XGBoost</a>
                     </div>
                     <div class="footer-admin">
                         <h4>Akses Sistem</h4>
@@ -230,7 +372,7 @@
                     </div>
                 </div>
                 <div class="footer-bottom">
-                    <p>&copy; 2026 Statisy. Hak Cipta Dilindungi. Dibuat dengan presisi visual & performa analitik tinggi.</p>
+                    <p>&copy; 2026 Statisy. Hak Cipta Dilindungi. Dibuat dengan <span style="color: var(--accent-purple);">♥</span> untuk presisi analitik.</p>
                 </div>
             </div>
         </footer>
